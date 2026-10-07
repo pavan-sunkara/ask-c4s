@@ -1,0 +1,122 @@
+# =============================================================================
+# Ask C4S — CI and image publishing.
+#
+#   every push / PR   typecheck + build, the users/roles smoke test, and a check
+#                     that the extension's copy of the shared stylesheet is current
+#   push to main/dev/qa, or a v* tag
+#                     build the image, run the containment check BEFORE pushing,
+#                     then publish ghcr.io/<owner>/ask-c4s-server:<ref> and
+#                     :<ref>-<sha7>
+#
+# Nothing here deploys anywhere. Clients are given a published image (or pull it
+# themselves with a read-only token); how it is run is their infrastructure.
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main, dev, qa]
+    tags: ["v*"]
+  pull_request: {}
+  workflow_dispatch: {}
+
+# A newer push to the same ref cancels the in-flight run so stale tags aren't published.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    name: Typecheck, build, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      # tsc is the typecheck AND the build: scripts/smoke-users.mjs runs the
+      # compiled server from dist/.
+      - name: Typecheck + build
+        run: npm run build
+
+      # Starts its own throwaway server (random port, scratch data, no .env, no
+      # SAP) and exercises sign-in, roles, the SAP write gate, revocation, lockout.
+      - name: Users and roles smoke test
+        run: node scripts/smoke-users.mjs
+
+      - name: Shared stylesheet is in sync with the extension copy
+        run: sh scripts/sync-shared-ui.sh --check
+
+  image:
+    name: Build, verify containment, publish
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tags
+        id: meta
+        run: |
+          REF="${GITHUB_REF_NAME}"
+          SHA7="${GITHUB_SHA:0:7}"
+          # GHCR requires a lower-cased owner.
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_ref=${OWNER_LC}/ask-c4s-server:${REF}" >> "$GITHUB_OUTPUT"
+          echo "image_sha=${OWNER_LC}/ask-c4s-server:${REF}-${SHA7}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build into the local daemon first so the containment check can inspect it.
+      - name: Build image (load, do not push yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: ask-c4s-server:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Invoked via `sh` on purpose: this repo is developed on Windows with
+      # core.fileMode=false, so a .sh committed from there can land without its
+      # exec bit and the runner fails with "Permission denied" (exit 126).
+      - name: Verify containment (only the three static apps, no insecure defaults, no source)
+        run: sh ./scripts/verify-image-containment.sh ask-c4s-server:ci
+
+      - name: Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_ref }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_sha }}
+          cache-from: type=gha
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=Ask C4S

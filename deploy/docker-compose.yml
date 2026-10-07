@@ -1,0 +1,48 @@
+# Ask C4S on one EC2 instance: the server behind Caddy, which obtains and renews
+# the HTTPS certificate on its own. Step-by-step in README.md next to this file.
+#
+#   cp .env.example .env   # fill in DOMAIN, ACME_EMAIL, ASKC4S_IMAGE, the bootstrap owner
+#   docker compose pull && docker compose up -d
+services:
+  askc4s:
+    image: ${ASKC4S_IMAGE:?set ASKC4S_IMAGE in .env, e.g. ghcr.io/<owner>/ask-c4s-server:main}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      SERVICE_OPS_UI_PORT: "3030"
+      DATA_DIR: /app/data
+    volumes:
+      # Users, settings, cache, the encrypted SAP tenant catalog and its key.
+      # Back this volume up (see README). Losing the key makes the stored SAP
+      # passwords unreadable; re-entering them in the admin page fixes that.
+      - askc4s-data:/app/data
+    expose:
+      - "3030"            # reachable by Caddy only — never published on the host
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3030/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - askc4s
+    ports:
+      - "80:80"           # ACME HTTP challenge + redirect to https
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # certificates
+      - caddy-config:/config
+
+volumes:
+  askc4s-data:
+  caddy-data:
+  caddy-config:

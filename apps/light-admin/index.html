@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ask C4S — Admin</title>
+<!--
+  Ask C4S — admin page: core settings, SAP tenants and users.
+
+  Deliberately a SINGLE self-contained file with no build step: no Vite, no
+  React, no node_modules. The image just COPYs this directory, which is what
+  keeps `ask-c4s-server` small. An Audit page is a planned addition.
+
+  Settings: renders whatever GET /api/admin/settings returns, so this file needs
+  no list of its own and can never drift from the registry.
+
+  Tenants: the SAP C4C connection. Renders GET /api/admin/tenants (the encrypted
+  catalog in data/tenant-catalog.json, src/secureConfig.ts) and drives add /
+  edit / activate / test / remove. Owners and admins only (tenants:manage). A
+  password is sent once, on save, and never comes back.
+
+  Users: renders GET /api/admin/users and drives the user directory (src/users.ts).
+  What each role may do is decided by the SERVER (src/access.ts); this page only
+  hides what the signed-in role can't use, it never decides access.
+
+  Sign-in adapts to the deployment (GET /api/auth/providers):
+    directory  personal accounts → email + password (POST /api/auth/login)
+    otherwise  the shared admin password (POST /api/internal/auth), as before
+-->
+<!-- Single source of truth for the look — shared with the PWA and the
+     extension. Base tokens, fonts, buttons, inputs and loaders come from here. -->
+<link rel="stylesheet" href="/shared/askc4s.css" />
+<style>
+  :root{
+    /* Base tokens (--bg, --card, --fg, --muted, --line, --accent, --good,
+       --warn, --danger, --sans, --mono) now come from /shared/askc4s.css so
+       this page can't drift from the other surfaces. These are the admin-only
+       extras the shared system doesn't need. */
+    --accent-deep:#1e40af;
+    --good-bg:#d1fae5; --warn-bg:#fef3c7; --danger-bg:#fee2e2;
+  }
+  @media (prefers-color-scheme:dark){
+    /* Admin keeps a dark mode (the field PWA doesn't). Overrides the shared
+       light tokens when the OS asks for dark. */
+    :root{--bg:#0a0f1c;--card:#111a2e;--fg:#e8ecf6;--muted:#9aa6bf;--faint:#6b7590;
+      --line:#243049;--good-bg:#053a2b;--warn-bg:#3a2a0e;--danger-bg:#3d1414;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.5}
+  header{background:linear-gradient(135deg,#06b6d4,#3b82f6 35%,#8b5cf6 70%,#ec4899);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;font-weight:700}
+  .pill{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);white-space:nowrap}
+  main{max-width:960px;margin:0 auto;padding:20px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tab{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 14px;font-weight:600;color:var(--muted);cursor:pointer}
+  .tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+  .cat{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .cat > h2{margin:0;padding:12px 16px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);background:rgba(127,127,127,.04)}
+  .row{padding:14px 16px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+  .row:last-child{border-bottom:0}
+  .k{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .lbl{font-weight:600;font-size:14px}
+  .desc{font-size:12.5px;color:var(--muted);margin-top:2px;max-width:60ch}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:6px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
+  .t-override{background:var(--good-bg);color:var(--good)} .t-env{background:var(--warn-bg);color:var(--warn)} .t-default{background:rgba(127,127,127,.14);color:var(--faint)}
+  .ctl{display:flex;gap:6px;align-items:center}
+  input,select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg);min-width:190px}
+  input[type=checkbox]{min-width:auto;width:18px;height:18px}
+  button{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:var(--danger)}
+  button:disabled{opacity:.5;cursor:default}
+  .msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+  .msg.err{background:var(--danger-bg);color:var(--danger);display:block}
+  .msg.ok{background:var(--good-bg);color:var(--good);display:block}
+  .msg.warn{background:var(--warn-bg);color:var(--warn);display:block}
+  .login{max-width:380px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .login h2{margin:0 0 6px;font-size:18px}
+  .login p{margin:0 0 16px;color:var(--muted);font-size:13px}
+  .login input{width:100%;margin-bottom:10px}
+  .login button{width:100%}
+  .hint{font-size:12px;color:var(--faint);margin-top:10px}
+  code{font-family:var(--mono);font-size:12px;background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .panel h3{margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end}
+  .grid label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+  .grid input,.grid select{width:100%;min-width:0}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+  .tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl .who{font-weight:600}
+  .tbl .sub{font-size:12px;color:var(--muted)}
+  .tbl .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px}
+  .b-active{background:var(--good-bg);color:var(--good)} .b-disabled{background:var(--danger-bg);color:var(--danger)}
+  .b-sso{background:rgba(127,127,127,.14);color:var(--faint);margin-left:4px}
+  .b-env{background:rgba(127,127,127,.14);color:var(--muted);margin-left:6px} .b-prod{background:var(--danger-bg);color:var(--danger);margin-left:6px} .b-on{background:var(--good-bg);color:var(--good);margin-left:6px}
+  .url{font-family:var(--mono);font-size:11px;color:var(--faint);word-break:break-all}
+  .grid .wide{grid-column:1/-1}
+  .scroll{overflow-x:auto}
+  .secret{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:14px}
+  .secret b{background:rgba(127,127,127,.14);padding:3px 8px;border-radius:6px;user-select:all}
+  .you{font-size:11px;color:var(--faint);margin-left:6px}
+</style>
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <h2>Ask C4S — Admin</h2>
+  <p id="loginLead">Sign in to continue.</p>
+  <div id="loginMsg" class="msg"></div>
+  <div id="loginDirectory" hidden>
+    <input id="email" type="email" placeholder="Email" autocomplete="username" />
+    <input id="dpw" type="password" placeholder="Password" autocomplete="current-password" />
+    <button class="primary" id="dLoginBtn">Sign in</button>
+  </div>
+  <div id="loginShared" hidden>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" />
+    <button class="primary" id="loginBtn">Sign in</button>
+    <div class="hint">Set by <code>ASKC4S_INTERNAL_PASSWORD</code> on the server.</div>
+  </div>
+  <div id="ssoSlot"></div>
+</div>
+
+<div id="force" class="login" hidden>
+  <h2>Choose a new password</h2>
+  <p>You signed in with a temporary password. Set your own to continue.</p>
+  <div id="forceMsg" class="msg"></div>
+  <input id="fcur" type="password" placeholder="Temporary password" autocomplete="current-password" />
+  <input id="fnew" type="password" placeholder="New password" autocomplete="new-password" />
+  <input id="fnew2" type="password" placeholder="Repeat new password" autocomplete="new-password" />
+  <button class="primary" id="forceBtn">Save and continue</button>
+  <div class="hint" id="forceHint"></div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Ask C4S — Admin</h1>
+    <span class="pill" id="tenantPill">tenant …</span>
+    <span class="pill" id="healthPill">health …</span>
+    <span class="pill" id="mePill">…</span>
+    <span style="margin-left:auto"></span>
+    <button id="reloadBtn">Reload</button>
+    <button id="outBtn">Sign out</button>
+  </header>
+  <main>
+    <div class="tabs" id="tabs"></div>
+    <div id="msg" class="msg"></div>
+
+    <section id="tab-settings" hidden>
+      <div id="cats"></div>
+      <p class="hint" id="settingsHint">
+        Settings for this deployment. The SAP connection is on the Tenants tab.
+      </p>
+    </section>
+
+    <section id="tab-tenants" hidden>
+      <div id="tenantStatus" class="msg"></div>
+      <div class="panel">
+        <h3 id="tfTitle">Add a tenant</h3>
+        <div class="grid">
+          <div><label for="tfLabel">Label</label><input id="tfLabel" type="text" placeholder="e.g. Val, Production EU" autocomplete="off" /></div>
+          <div><label for="tfEnv">Environment</label><select id="tfEnv"></select></div>
+          <div class="wide"><label for="tfUrl">OData base URL</label><input id="tfUrl" type="url" placeholder="https://my000000.crm.ondemand.com/sap/c4c/odata/v1/c4codataapi" autocomplete="off" /></div>
+          <div><label for="tfUser">Integration user</label><input id="tfUser" type="text" autocomplete="off" /></div>
+          <div><label for="tfPw" id="tfPwLabel">Password</label><input id="tfPw" type="password" autocomplete="new-password" /></div>
+          <div class="wide"><label for="tfNotes">Notes (optional)</label><input id="tfNotes" type="text" autocomplete="off" /></div>
+          <div class="ctl wide"><button id="tfTest">Test connection</button><button class="primary" id="tfSave">Add tenant</button><button id="tfCancel" hidden>Cancel</button></div>
+        </div>
+        <div class="hint">The base URL is the tenant's OData root (it ends in <code>/c4codataapi</code>). The password is encrypted on the server and never shown again; when editing, leave it blank to keep the current one.</div>
+      </div>
+      <div class="panel">
+        <h3>Tenants</h3>
+        <div class="scroll" id="tenantsBody"></div>
+      </div>
+      <p class="hint">
+        One tenant is <b>active</b> at a time: every lookup and write from the extension and the field app
+        goes there, and switching takes effect immediately. Writes to a tenant tagged <b>production</b> are
+        refused unless the client explicitly confirms them. The encryption key lives in
+        <code>data/.tenant-key</code> (or <code>ADMIN_ENCRYPTION_KEY</code>) — back it up together with the catalog.
+      </p>
+    </section>
+
+    <section id="tab-users" hidden>
+      <div id="legacyBanner" class="msg warn" style="display:none"></div>
+      <div id="secretBox" class="panel" hidden></div>
+      <div class="panel" id="addPanel">
+        <h3 id="addTitle">Add a user</h3>
+        <div class="grid">
+          <div><label for="nuEmail">Email</label><input id="nuEmail" type="email" autocomplete="off" /></div>
+          <div><label for="nuName">Name (optional)</label><input id="nuName" type="text" autocomplete="off" /></div>
+          <div><label for="nuRole">Role</label><select id="nuRole"></select></div>
+          <div><label for="nuPw" id="nuPwLabel">Password</label><input id="nuPw" type="password" autocomplete="new-password" /></div>
+          <div id="nuSsoWrap"><label><input id="nuSso" type="checkbox" /> Sign in with SSO only</label></div>
+          <div><button class="primary" id="nuBtn">Add user</button></div>
+        </div>
+        <div class="hint" id="nuHint"></div>
+      </div>
+      <div class="panel">
+        <h3>People</h3>
+        <div class="scroll" id="usersBody"></div>
+      </div>
+      <p class="hint">
+        <b>Owner</b>: everything. <b>Admin</b>: settings and users (managers and agents).
+        <b>Manager</b>: read-only oversight. <b>Agent</b>: uses the extension and field app,
+        including SAP writes. A deployment always keeps at least one active owner.
+      </p>
+    </section>
+
+    <section id="tab-account" hidden>
+      <div class="panel">
+        <h3>Your account</h3>
+        <div id="acctWho"></div>
+      </div>
+      <div class="panel">
+        <h3>Change password</h3>
+        <div class="grid">
+          <div><label for="acur">Current password</label><input id="acur" type="password" autocomplete="current-password" /></div>
+          <div><label for="anew">New password</label><input id="anew" type="password" autocomplete="new-password" /></div>
+          <div><label for="anew2">Repeat new password</label><input id="anew2" type="password" autocomplete="new-password" /></div>
+          <div><button class="primary" id="acctBtn">Change password</button></div>
+        </div>
+        <div class="hint">Other devices you're signed in on are signed out when you change it.</div>
+      </div>
+    </section>
+
+    <section id="tab-none" hidden>
+      <div class="panel">
+        <h3>No admin access</h3>
+        <p>Your role doesn't include any admin pages. Use the Ask C4S extension or the field app.
+           If you need more access, ask an owner or admin.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var TOKEN_KEY = "askc4s.admin_token";
+  // The field PWA stores its token under this key. Same origin, so reading it
+  // here means one sign-in covers both the app and this page.
+  var SHARED_KEY = "askc4s.field.token";
+  var token = null;
+  try { token = sessionStorage.getItem(TOKEN_KEY); } catch (e) { /* private mode */ }
+  if (!token) { try { token = localStorage.getItem(SHARED_KEY); } catch (e) { /* private mode */ } }
+
+  var me = null;          // { role, permissions, user, mode, mustChangePassword }
+  var usersData = null;   // last GET /api/admin/users
+  var currentTab = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function show(el, on) { el.hidden = !on; }
+  function setMsg(el, text, kind) {
+    el.className = "msg" + (kind ? " " + kind : "");
+    el.textContent = text || "";
+    if (!text) { el.className = "msg"; el.style.display = ""; }
+  }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function can(perm) { return !!(me && me.permissions && me.permissions.indexOf(perm) >= 0); }
+
+  function storeToken(t) {
+    token = t;
+    try { sessionStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+  }
+  function clearToken() {
+    token = null;
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    try { localStorage.removeItem(SHARED_KEY); } catch (e) {}
+  }
+
+  function headers() {
+    var h = { "Content-Type": "application/json", "X-Admin-Actor": "light-admin" };
+    if (token) h["Authorization"] = "Bearer " + token;
+    return h;
+  }
+
+  function api(path, opts) {
+    opts = opts || {};
+    // raw: a 200 whose body says ok:false is a RESULT (a failed connection
+    // probe), not an error to throw.
+    var raw = !!opts.raw;
+    delete opts.raw;
+    opts.headers = headers();
+    return fetch(path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401) {
+          // Token missing/expired/revoked, or the gate is fail-closed.
+          clearToken();
+          boot("Your session ended — sign in again.");
+          throw new Error("Unauthorized — sign in again.");
+        }
+        if (r.status === 403 && j && j.code === "password_change_required") {
+          me = me || {};
+          me.mustChangePassword = true;
+          showForce();
+          throw new Error(j.error);
+        }
+        if (!r.ok || (j.ok === false && !raw)) throw new Error((j && j.error) || ("HTTP " + r.status));
+        return j;
+      });
+    });
+  }
+
+  // ---- sign-in ------------------------------------------------------------
+  function postJson(path, body) {
+    return fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+    });
+  }
+
+  function doSharedLogin() {
+    var pw = $("pw").value;
+    if (!pw) return;
+    setMsg($("loginMsg"), "");
+    $("loginBtn").disabled = true;
+    postJson("/api/internal/auth", { password: pw })
+      .then(function (res) {
+        if (!res.ok || !res.j.token) throw new Error(res.j.error || "Sign-in failed.");
+        storeToken(res.j.token);
+        $("pw").value = "";
+        boot();
+      })
+      .catch(function (e) { setMsg($("loginMsg"), e.message, "err"); })
+      .then(function () { $("loginBtn").disabled = false; });
+  }
+
+  function doDirectoryLogin() {
+    var email = $("email").value.trim();
+    var pw = $("dpw").value;
+    if (!email || !pw) return;
+    setMsg($("loginMsg"), "");
+    $("dLoginBtn").disabled = true;
+    postJson("/api/auth/login", { email: email, password: pw })
+      .then(function (res) {
+        if (!res.ok || !res.j.token) throw new Error(res.j.error || "Sign-in failed.");
+        storeToken(res.j.token);
+        $("dpw").value = "";
+        boot();
+      })
+      .catch(function (e) { setMsg($("loginMsg"), e.message, "err"); })
+      .then(function () { $("dLoginBtn").disabled = false; });
+  }
+
+  function showLogin(msg) {
+    show($("app"), false);
+    show($("force"), false);
+    show($("login"), true);
+    setMsg($("loginMsg"), msg || "", msg ? "warn" : "");
+    // Which form? Ask the server — personal accounts, or the shared password.
+    fetch("/api/auth/providers")
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var p = (j && j.providers) || {};
+        var directory = !!p.directory;
+        show($("loginDirectory"), directory);
+        show($("loginShared"), !directory);
+        $("loginLead").textContent = directory
+          ? "Sign in with your email and password."
+          : "Enter the admin password to continue.";
+        var slot = $("ssoSlot");
+        slot.innerHTML = "";
+        if (p.oidc) {
+          var b = document.createElement("button");
+          b.textContent = "Sign in with Microsoft";
+          b.style.marginTop = "10px";
+          b.onclick = function () { window.location.href = p.oidcStartUrl || "/api/auth/oidc/start"; };
+          slot.appendChild(b);
+        }
+        (directory ? $("email") : $("pw")).focus();
+      })
+      .catch(function () {
+        show($("loginDirectory"), false);
+        show($("loginShared"), true);
+      });
+  }
+
+  // ---- forced password change --------------------------------------------
+  function showForce() {
+    show($("app"), false);
+    show($("login"), false);
+    show($("force"), true);
+    setMsg($("forceMsg"), "");
+    $("forceHint").textContent = "At least " + (usersData && usersData.minPasswordLength ? usersData.minPasswordLength : 12) + " characters.";
+  }
+
+  function submitPasswordChange(cur, nw, nw2, msgEl, btn, done) {
+    setMsg(msgEl, "");
+    if (!cur || !nw) { setMsg(msgEl, "Fill in every field.", "err"); return; }
+    if (nw !== nw2) { setMsg(msgEl, "The new passwords don't match.", "err"); return; }
+    btn.disabled = true;
+    fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ currentPassword: cur, newPassword: nw }),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || res.j.ok === false) throw new Error(res.j.error || "Couldn't change the password.");
+        done();
+      })
+      .catch(function (e) { setMsg(msgEl, e.message, "err"); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  // ---- settings tab -------------------------------------------------------
+  function tagFor(s) {
+    var t = s.source === "override" ? "override" : s.source === "env" ? ".env" : "default";
+    return '<span class="tag t-' + s.source + '">' + t + "</span>";
+  }
+
+  function controlFor(s, readOnly) {
+    var spec = s.spec, wrap = document.createElement("div");
+    wrap.className = "ctl";
+    var input;
+    if (spec.type === "boolean") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = s.value === true;
+    } else if (spec.type === "enum" && spec.options) {
+      input = document.createElement("select");
+      spec.options.forEach(function (o) {
+        var op = document.createElement("option");
+        op.value = o; op.textContent = o;
+        if (String(s.value) === o) op.selected = true;
+        input.appendChild(op);
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = spec.type === "secret" ? "password" : spec.type === "number" ? "number" : "text";
+      // Secrets are never returned in plaintext — show the hint, not the value.
+      input.value = spec.type === "secret" ? "" : (s.value === null || s.value === undefined ? "" : String(s.value));
+      input.placeholder = spec.type === "secret"
+        ? (s.isSet ? "•••••• " + (s.secretHint || "") : "not set")
+        : (spec.placeholder || String(spec.defaultValue));
+      if (spec.type === "number") {
+        if (spec.min !== undefined) input.min = spec.min;
+        if (spec.max !== undefined) input.max = spec.max;
+      }
+    }
+    wrap.appendChild(input);
+    if (readOnly) {
+      // Managers can see settings but not change them (the server enforces it too).
+      input.disabled = true;
+      return wrap;
+    }
+    var save = document.createElement("button");
+    save.textContent = "Save";
+    save.className = "primary";
+    save.onclick = function () {
+      var v;
+      if (spec.type === "boolean") v = input.checked;
+      else if (spec.type === "number") v = Number(input.value);
+      else v = input.value;
+      if (spec.type === "secret" && v === "") {
+        setMsg($("msg"), "Enter a new value to change " + spec.key + ".", "err");
+        return;
+      }
+      save.disabled = true;
+      api("/api/admin/settings/" + encodeURIComponent(spec.key), {
+        method: "PUT",
+        body: JSON.stringify({ value: v }),
+      })
+        .then(function () { setMsg($("msg"), "Saved " + spec.key + ".", "ok"); return loadSettings(); })
+        .catch(function (e) { setMsg($("msg"), e.message, "err"); })
+        .then(function () { save.disabled = false; });
+    };
+    var reset = document.createElement("button");
+    reset.textContent = "Reset";
+    reset.title = "Remove the override and fall back to .env / default";
+    reset.disabled = !s.isOverride;
+    reset.onclick = function () {
+      reset.disabled = true;
+      api("/api/admin/settings/" + encodeURIComponent(spec.key), { method: "DELETE" })
+        .then(function () { setMsg($("msg"), "Reset " + spec.key + ".", "ok"); return loadSettings(); })
+        .catch(function (e) { setMsg($("msg"), e.message, "err"); reset.disabled = false; });
+    };
+    wrap.appendChild(save);
+    wrap.appendChild(reset);
+    return wrap;
+  }
+
+  function renderSettings(data) {
+    $("tenantPill").textContent = "tenant " + (data.tenant || "?");
+    var readOnly = !can("settings:write");
+    $("settingsHint").style.display = "";
+    var byCat = {};
+    (data.settings || []).forEach(function (s) {
+      (byCat[s.spec.category] = byCat[s.spec.category] || []).push(s);
+    });
+    var host = $("cats");
+    host.innerHTML = "";
+    if (readOnly) {
+      var note = document.createElement("div");
+      note.className = "msg warn";
+      note.textContent = "View only — your role (" + me.role + ") can't change settings.";
+      host.appendChild(note);
+    }
+    Object.keys(byCat).sort().forEach(function (cat) {
+      var sec = document.createElement("section");
+      sec.className = "cat";
+      var h = document.createElement("h2");
+      h.textContent = cat + " · " + byCat[cat].length;
+      sec.appendChild(h);
+      byCat[cat].forEach(function (s) {
+        var row = document.createElement("div");
+        row.className = "row";
+        var left = document.createElement("div");
+        left.innerHTML =
+          '<div class="lbl">' + esc(s.spec.label) + tagFor(s) + "</div>" +
+          '<div class="k">' + esc(s.spec.key) + "</div>" +
+          '<div class="desc">' + esc(s.spec.description || "") + "</div>" +
+          '<div class="meta">default: ' + esc(String(s.spec.defaultValue)) +
+            (s.spec.envFallback ? "  ·  env: " + esc(s.spec.envFallback) : "") + "</div>";
+        row.appendChild(left);
+        row.appendChild(controlFor(s, readOnly));
+        sec.appendChild(row);
+      });
+      host.appendChild(sec);
+    });
+  }
+
+  function loadSettings() {
+    return api("/api/admin/settings").then(renderSettings);
+  }
+
+  // ---- tenants tab --------------------------------------------------------
+  // The SAP C4C tenant the shim talks to. Credentials live in the encrypted
+  // catalog on the server; this page never sees a password after it has been
+  // typed. One tenant is active at a time, and a catalog tenant always wins
+  // over C4C_* in the server's .env.
+  var ENVS = ["sandbox", "dev", "qa", "val", "uat", "preprod", "production", "other"];
+  var tenantsData = null;  // last GET /api/admin/tenants
+  var editingId = null;    // tenant id being edited, or null when adding
+
+  function hostOf(url) {
+    try { return new URL(url).hostname; } catch (e) { return url || "?"; }
+  }
+  function envBadge(env) {
+    return '<span class="badge ' + (env === "production" ? "b-prod" : "b-env") + '">' + esc(env) + "</span>";
+  }
+  // Plain text (setMsg uses textContent), so no escaping here.
+  function describeProbe(res, host) {
+    if (res.ok) return "Connected to " + host + " (HTTP " + res.status + ", " + res.durationMs + " ms).";
+    var detail = String(res.error || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+    var hint = res.status === 401 ? " HTTP 401 usually means a wrong, expired or locked password."
+      : res.status === 403 ? " HTTP 403: the user signs in but has no OData access."
+      : res.status === 404 ? " HTTP 404: check the base URL — it must be the OData root ending in /c4codataapi."
+      : !res.status ? " The server couldn't reach that host" + (detail ? " (" + detail + ")" : "") + "."
+      : (detail ? " " + detail : "");
+    return "Couldn't connect to " + host + " (" + (res.status ? "HTTP " + res.status : "no response") + ")." + hint;
+  }
+  function resetTenantForm() {
+    editingId = null;
+    $("tfLabel").value = ""; $("tfUrl").value = ""; $("tfUser").value = ""; $("tfPw").value = ""; $("tfNotes").value = "";
+    $("tfEnv").value = "sandbox";
+    $("tfTitle").textContent = "Add a tenant";
+    $("tfSave").textContent = "Add tenant";
+    $("tfPwLabel").textContent = "Password";
+    $("tfCancel").hidden = true;
+  }
+  function editTenant(t) {
+    editingId = t.id;
+    $("tfLabel").value = t.label; $("tfEnv").value = t.environment; $("tfUrl").value = t.baseUrl;
+    $("tfUser").value = t.user; $("tfPw").value = ""; $("tfNotes").value = t.notes || "";
+    $("tfTitle").textContent = "Edit " + t.label;
+    $("tfSave").textContent = "Save changes";
+    $("tfPwLabel").textContent = "Password (blank = keep current)";
+    $("tfCancel").hidden = false;
+    window.scrollTo(0, 0);
+    $("tfLabel").focus();
+  }
+  function tenantFormBody() {
+    return {
+      label: $("tfLabel").value.trim(),
+      environment: $("tfEnv").value,
+      baseUrl: $("tfUrl").value.trim(),
+      user: $("tfUser").value.trim(),
+      password: $("tfPw").value,
+      notes: $("tfNotes").value.trim(),
+    };
+  }
+
+  function renderTenants(d) {
+    tenantsData = d;
+    var sel = $("tfEnv");
+    if (!sel.options.length) {
+      ENVS.forEach(function (e) { var o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o); });
+      sel.value = "sandbox";
+    }
+    $("tenantPill").textContent = "tenant " + (d.activeTenant || "?");
+    var status = $("tenantStatus");
+    var active = (d.tenants || []).filter(function (t) { return t.isActive; })[0];
+    if (d.source === "catalog" && active) {
+      setMsg(status, "SAP connection: " + active.label + " — " + hostOf(active.baseUrl) + ", user " + active.user + ".", "ok");
+    } else if (d.source === "env") {
+      setMsg(status, "SAP connection comes from the server's .env (" + hostOf(d.env.baseUrl) + ", user " + (d.env.user || "?") +
+        "). Add a tenant below to manage it here — a catalog tenant takes precedence over .env.", "warn");
+    } else {
+      setMsg(status, "No SAP connection configured. The extension and the field app can't reach SAP until a tenant is added below.", "err");
+    }
+
+    var host = $("tenantsBody");
+    host.innerHTML = "";
+    if (!d.tenants.length) {
+      host.innerHTML = '<p class="hint">No tenants yet.</p>';
+      return;
+    }
+    var tbl = document.createElement("table");
+    tbl.className = "tbl";
+    tbl.innerHTML = "<thead><tr><th>Tenant</th><th>Host</th><th>User</th><th>Added</th><th></th></tr></thead>";
+    var tb = document.createElement("tbody");
+    d.tenants.forEach(function (t) {
+      var tr = document.createElement("tr");
+      var tdT = document.createElement("td");
+      tdT.innerHTML =
+        '<div class="who">' + esc(t.label) + envBadge(t.environment) + (t.isActive ? '<span class="badge b-on">active</span>' : "") + "</div>" +
+        (t.notes ? '<div class="sub">' + esc(t.notes) + "</div>" : "");
+      tr.appendChild(tdT);
+      var tdH = document.createElement("td");
+      tdH.innerHTML = "<div>" + esc(hostOf(t.baseUrl)) + '</div><div class="url">' + esc(t.baseUrl) + "</div>";
+      tr.appendChild(tdH);
+      var tdU = document.createElement("td");
+      tdU.textContent = t.user;
+      tr.appendChild(tdU);
+      var tdA = document.createElement("td");
+      tdA.innerHTML = esc(fmtTime(t.addedAt)) + (t.addedBy ? '<div class="sub">' + esc(t.addedBy) + "</div>" : "");
+      tr.appendChild(tdA);
+
+      var tdX = document.createElement("td");
+      var acts = document.createElement("div");
+      acts.className = "acts";
+      if (!t.isActive) {
+        var act = document.createElement("button");
+        act.textContent = "Activate";
+        act.className = "primary";
+        act.onclick = function () {
+          act.disabled = true;
+          api("/api/admin/tenants/" + encodeURIComponent(t.id) + "/activate", { method: "POST", body: "{}" })
+            .then(function () { setMsg($("msg"), t.label + " is now the active tenant.", "ok"); return loadTenants(); })
+            .catch(function (e) { setMsg($("msg"), e.message, "err"); act.disabled = false; });
+        };
+        acts.appendChild(act);
+      }
+      var tst = document.createElement("button");
+      tst.textContent = "Test";
+      tst.onclick = function () {
+        tst.disabled = true;
+        setMsg($("msg"), "Testing " + t.label + "…", "warn");
+        api("/api/admin/tenants/" + encodeURIComponent(t.id) + "/test", { method: "POST", body: "{}", raw: true })
+          .then(function (res) { setMsg($("msg"), describeProbe(res, hostOf(t.baseUrl)), res.ok ? "ok" : "err"); })
+          .catch(function (e) { setMsg($("msg"), e.message, "err"); })
+          .then(function () { tst.disabled = false; });
+      };
+      acts.appendChild(tst);
+      var ed = document.createElement("button");
+      ed.textContent = "Edit";
+      ed.onclick = function () { editTenant(t); };
+      acts.appendChild(ed);
+      var rm = document.createElement("button");
+      rm.textContent = "Remove";
+      rm.className = "danger";
+      rm.onclick = function () {
+        var warn = t.isActive ? " It is the active tenant: the next one in the list (or .env, or nothing) takes over immediately." : "";
+        if (!window.confirm("Remove " + t.label + " (" + hostOf(t.baseUrl) + ")?" + warn)) return;
+        rm.disabled = true;
+        api("/api/admin/tenants/" + encodeURIComponent(t.id), { method: "DELETE" })
+          .then(function () {
+            setMsg($("msg"), "Removed " + t.label + ".", "ok");
+            if (editingId === t.id) resetTenantForm();
+            return loadTenants();
+          })
+          .catch(function (e) { setMsg($("msg"), e.message, "err"); rm.disabled = false; });
+      };
+      acts.appendChild(rm);
+      tdX.appendChild(acts);
+      tr.appendChild(tdX);
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+    host.appendChild(tbl);
+  }
+
+  function loadTenants() {
+    return api("/api/admin/tenants").then(renderTenants);
+  }
+
+  function saveTenant() {
+    var body = tenantFormBody();
+    if (!body.label || !body.baseUrl || !body.user) { setMsg($("msg"), "Label, base URL and user are required.", "err"); return; }
+    if (!editingId && !body.password) { setMsg($("msg"), "Enter the password for a new tenant.", "err"); return; }
+    if (!body.password) delete body.password;
+    var wasEdit = !!editingId;
+    var hadTenants = !!(tenantsData && tenantsData.tenants.length);
+    $("tfSave").disabled = true;
+    api(wasEdit ? "/api/admin/tenants/" + encodeURIComponent(editingId) : "/api/admin/tenants", {
+      method: wasEdit ? "PATCH" : "POST",
+      body: JSON.stringify(body),
+    })
+      .then(function (j) {
+        setMsg($("msg"), (wasEdit ? "Saved " : "Added ") + j.tenant.label + "." +
+          (wasEdit ? "" : (hadTenants ? " Click Activate to switch to it." : " It is the active tenant.")), "ok");
+        resetTenantForm();
+        return loadTenants();
+      })
+      .catch(function (e) { setMsg($("msg"), e.message, "err"); })
+      .then(function () { $("tfSave").disabled = false; });
+  }
+
+  function testTenantForm() {
+    var body = tenantFormBody();
+    if (!body.baseUrl || !body.user) { setMsg($("msg"), "Enter the base URL and user first.", "err"); return; }
+    var probe;
+    if (body.password) {
+      probe = api("/api/admin/tenant/test", { method: "POST", body: JSON.stringify(body), raw: true });
+    } else if (editingId) {
+      // Editing with the password left blank: test what is saved.
+      probe = api("/api/admin/tenants/" + encodeURIComponent(editingId) + "/test", { method: "POST", body: "{}", raw: true });
+    } else {
+      setMsg($("msg"), "Enter the password to test a new tenant.", "err");
+      return;
+    }
+    $("tfTest").disabled = true;
+    setMsg($("msg"), "Testing " + hostOf(body.baseUrl) + "…", "warn");
+    probe
+      .then(function (res) { setMsg($("msg"), describeProbe(res, hostOf(body.baseUrl)), res.ok ? "ok" : "err"); })
+      .catch(function (e) { setMsg($("msg"), e.message, "err"); })
+      .then(function () { $("tfTest").disabled = false; });
+  }
+
+  // ---- users tab ----------------------------------------------------------
+  function fmtTime(ms) {
+    if (!ms) return "never";
+    try { return new Date(ms).toLocaleString(); } catch (e) { return "—"; }
+  }
+
+  function showSecret(who, pw, what) {
+    var box = $("secretBox");
+    box.hidden = false;
+    box.innerHTML =
+      "<h3>" + esc(what) + " — copy it now</h3>" +
+      '<div class="secret"><span>' + esc(who) + "</span><b id=\"secretVal\">" + esc(pw) + "</b>" +
+      '<button id="copyBtn">Copy</button></div>' +
+      '<div class="hint">It is shown once and never stored. They\'ll be asked to choose their own at first sign-in.</div>';
+    $("copyBtn").onclick = function () {
+      var done = function () { $("copyBtn").textContent = "Copied"; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(pw).then(done, function () {});
+      } else {
+        var r = document.createRange(); r.selectNodeContents($("secretVal"));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      }
+    };
+  }
+
+  function renderUsers(d) {
+    usersData = d;
+    var legacy = d.mode === "legacy";
+    var banner = $("legacyBanner");
+    if (legacy) {
+      banner.style.display = "block";
+      banner.className = "msg warn";
+      banner.textContent =
+        "No personal accounts yet — everyone currently shares the admin password. " +
+        "Create the first owner below to switch to personal sign-in. You'll be signed out and sign back in with that account.";
+    } else {
+      banner.style.display = "none";
+    }
+
+    // Add-user form
+    var roleSel = $("nuRole");
+    roleSel.innerHTML = "";
+    (d.assignableRoles || []).forEach(function (r) {
+      var o = document.createElement("option");
+      o.value = r; o.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+      roleSel.appendChild(o);
+    });
+    // Least privilege by default: a new account starts as an agent unless the admin picks otherwise.
+    if (!legacy && (d.assignableRoles || []).indexOf("agent") >= 0) roleSel.value = "agent";
+    $("addTitle").textContent = legacy ? "Create the first owner" : "Add a user";
+    $("nuBtn").textContent = legacy ? "Create owner" : "Add user";
+    $("nuPwLabel").textContent = legacy ? "Password (min " + d.minPasswordLength + ")" : "Password (blank = generate one)";
+    $("nuSsoWrap").style.display = legacy ? "none" : "";
+    $("addPanel").style.display = (d.assignableRoles && d.assignableRoles.length) ? "" : "none";
+    $("nuHint").textContent = legacy
+      ? "The owner can add everyone else. Keep this password somewhere safe."
+      : "A temporary password is shown once; the person must change it at first sign-in.";
+
+    // People table
+    var host = $("usersBody");
+    host.innerHTML = "";
+    if (!d.users.length) {
+      host.innerHTML = '<p class="hint">No accounts yet.</p>';
+      return;
+    }
+    var tbl = document.createElement("table");
+    tbl.className = "tbl";
+    tbl.innerHTML = "<thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead>";
+    var tb = document.createElement("tbody");
+    d.users.forEach(function (u) {
+      var self = u.id === (d.me && d.me.userId);
+      var manageable = !self && d.assignableRoles.indexOf(u.role) >= 0;
+      var tr = document.createElement("tr");
+
+      var tdWho = document.createElement("td");
+      tdWho.innerHTML =
+        '<div class="who">' + esc(u.name || u.email) + (self ? '<span class="you">you</span>' : "") + "</div>" +
+        '<div class="sub">' + esc(u.email) + (u.hasPassword ? "" : ' <span class="badge b-sso">SSO only</span>') + "</div>";
+      tr.appendChild(tdWho);
+
+      var tdRole = document.createElement("td");
+      if (manageable) {
+        var sel = document.createElement("select");
+        sel.style.minWidth = "110px";
+        d.assignableRoles.forEach(function (r) {
+          var o = document.createElement("option");
+          o.value = r; o.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+          if (r === u.role) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.onchange = function () {
+          sel.disabled = true;
+          api("/api/admin/users/" + encodeURIComponent(u.id), { method: "PATCH", body: JSON.stringify({ role: sel.value }) })
+            .then(function () { setMsg($("msg"), "Updated " + u.email + ".", "ok"); return loadUsers(); })
+            .catch(function (e) { setMsg($("msg"), e.message, "err"); return loadUsers(); });
+        };
+        tdRole.appendChild(sel);
+      } else {
+        tdRole.textContent = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+      }
+      tr.appendChild(tdRole);
+
+      var tdSt = document.createElement("td");
+      tdSt.innerHTML = '<span class="badge b-' + esc(u.status) + '">' + esc(u.status) + "</span>" +
+        (u.mustChangePassword ? ' <span class="badge b-sso">temp password</span>' : "");
+      tr.appendChild(tdSt);
+
+      var tdLast = document.createElement("td");
+      tdLast.textContent = fmtTime(u.lastLoginAt);
+      tr.appendChild(tdLast);
+
+      var tdAct = document.createElement("td");
+      var acts = document.createElement("div");
+      acts.className = "acts";
+      if (manageable) {
+        var tog = document.createElement("button");
+        tog.textContent = u.status === "active" ? "Disable" : "Enable";
+        if (u.status === "active") tog.className = "danger";
+        tog.onclick = function () {
+          tog.disabled = true;
+          api("/api/admin/users/" + encodeURIComponent(u.id), {
+            method: "PATCH",
+            body: JSON.stringify({ status: u.status === "active" ? "disabled" : "active" }),
+          })
+            .then(function () { setMsg($("msg"), (u.status === "active" ? "Disabled " : "Enabled ") + u.email + ".", "ok"); return loadUsers(); })
+            .catch(function (e) { setMsg($("msg"), e.message, "err"); tog.disabled = false; });
+        };
+        acts.appendChild(tog);
+
+        var rst = document.createElement("button");
+        rst.textContent = "Reset password";
+        rst.onclick = function () {
+          if (!window.confirm("Reset the password for " + u.email + "? They will be signed out everywhere.")) return;
+          rst.disabled = true;
+          api("/api/admin/users/" + encodeURIComponent(u.id) + "/reset-password", { method: "POST", body: "{}" })
+            .then(function (j) { showSecret(u.email, j.tempPassword, "New temporary password"); return loadUsers(); })
+            .catch(function (e) { setMsg($("msg"), e.message, "err"); rst.disabled = false; });
+        };
+        acts.appendChild(rst);
+      }
+      tdAct.appendChild(acts);
+      tr.appendChild(tdAct);
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+    host.appendChild(tbl);
+  }
+
+  function loadUsers() {
+    return api("/api/admin/users").then(renderUsers);
+  }
+
+  function addUser() {
+    var legacy = usersData && usersData.mode === "legacy";
+    var body = {
+      email: $("nuEmail").value.trim(),
+      name: $("nuName").value.trim(),
+      role: $("nuRole").value,
+      password: $("nuPw").value,
+      ssoOnly: !legacy && $("nuSso").checked,
+    };
+    if (!body.email) { setMsg($("msg"), "Enter an email address.", "err"); return; }
+    $("nuBtn").disabled = true;
+    api("/api/admin/users", { method: "POST", body: JSON.stringify(body) })
+      .then(function (j) {
+        $("nuEmail").value = ""; $("nuName").value = ""; $("nuPw").value = ""; $("nuSso").checked = false;
+        if (j.firstUser) {
+          // The server dropped every pre-account token, this one included.
+          clearToken();
+          boot("Owner account created. Sign in with " + j.user.email + ".");
+          return null;
+        }
+        setMsg($("msg"), "Added " + j.user.email + ".", "ok");
+        if (j.tempPassword) showSecret(j.user.email, j.tempPassword, "Temporary password");
+        else $("secretBox").hidden = true;
+        return loadUsers();
+      })
+      .catch(function (e) { setMsg($("msg"), e.message, "err"); })
+      .then(function () { $("nuBtn").disabled = false; });
+  }
+
+  // ---- account tab --------------------------------------------------------
+  function renderAccount() {
+    var u = me && me.user;
+    $("acctWho").innerHTML = u
+      ? "<div><b>" + esc(u.name || u.email) + "</b></div><div class=\"sub\">" + esc(u.email) + " · role: " + esc(me.role) + "</div>"
+      : "<div>Not signed in with a personal account.</div>";
+  }
+
+  // ---- tabs ---------------------------------------------------------------
+  function visibleTabs() {
+    var tabs = [];
+    if (can("settings:read")) tabs.push({ id: "settings", label: "Settings" });
+    if (can("tenants:manage")) tabs.push({ id: "tenants", label: "Tenants" });
+    if (can("users:read")) tabs.push({ id: "users", label: "Users" });
+    if (me && me.user && me.mode === "directory") tabs.push({ id: "account", label: "Account" });
+    return tabs;
+  }
+
+  function selectTab(id) {
+    currentTab = id;
+    ["settings", "tenants", "users", "account", "none"].forEach(function (t) { show($("tab-" + t), t === id); });
+    Array.prototype.forEach.call($("tabs").children, function (b) { b.className = "tab" + (b.getAttribute("data-tab") === id ? " on" : ""); });
+    setMsg($("msg"), "");
+    if (id === "settings") loadSettings().catch(function (e) { setMsg($("msg"), e.message, "err"); });
+    else if (id === "tenants") loadTenants().catch(function (e) { setMsg($("msg"), e.message, "err"); });
+    else if (id === "users") loadUsers().catch(function (e) { setMsg($("msg"), e.message, "err"); });
+    else if (id === "account") renderAccount();
+  }
+
+  function health() {
+    fetch("/api/health")
+      .then(function (r) { return r.json(); })
+      .then(function (j) { $("healthPill").textContent = j.ok ? "health ok" : "health ?"; })
+      .catch(function () { $("healthPill").textContent = "health down"; });
+  }
+
+  function showApp() {
+    show($("login"), false);
+    show($("force"), false);
+    if (me.mustChangePassword) { showForce(); return; }
+    show($("app"), true);
+    $("mePill").textContent = me.user ? (me.user.email + " · " + me.role) : ("role " + me.role);
+    health();
+    var tabs = visibleTabs();
+    var bar = $("tabs");
+    bar.innerHTML = "";
+    tabs.forEach(function (t) {
+      var b = document.createElement("button");
+      b.className = "tab";
+      b.textContent = t.label;
+      b.setAttribute("data-tab", t.id);
+      b.onclick = function () { selectTab(t.id); };
+      bar.appendChild(b);
+    });
+    selectTab(tabs.length ? tabs[0].id : "none");
+  }
+
+  // ---- boot ---------------------------------------------------------------
+  // /api/auth/me answers "who am I" for every posture: a personal token, a
+  // shared-password token, or the open local-dev gate (role owner, no token).
+  function boot(msg) {
+    fetch("/api/auth/me", { headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.role) { clearToken(); showLogin(msg); return; }
+        if (token) { try { sessionStorage.setItem(TOKEN_KEY, token); } catch (e) {} }
+        me = j;
+        showApp();
+      })
+      .catch(function () { showLogin("Can't reach the server."); });
+  }
+
+  $("loginBtn").onclick = doSharedLogin;
+  $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") doSharedLogin(); });
+  $("dLoginBtn").onclick = doDirectoryLogin;
+  $("dpw").addEventListener("keydown", function (e) { if (e.key === "Enter") doDirectoryLogin(); });
+  $("email").addEventListener("keydown", function (e) { if (e.key === "Enter") $("dpw").focus(); });
+  $("nuBtn").onclick = addUser;
+  $("tfSave").onclick = saveTenant;
+  $("tfTest").onclick = testTenantForm;
+  $("tfCancel").onclick = resetTenantForm;
+  $("forceBtn").onclick = function () {
+    submitPasswordChange($("fcur").value, $("fnew").value, $("fnew2").value, $("forceMsg"), $("forceBtn"), function () {
+      $("fcur").value = ""; $("fnew").value = ""; $("fnew2").value = "";
+      boot();
+    });
+  };
+  $("acctBtn").onclick = function () {
+    submitPasswordChange($("acur").value, $("anew").value, $("anew2").value, $("msg"), $("acctBtn"), function () {
+      $("acur").value = ""; $("anew").value = ""; $("anew2").value = "";
+      setMsg($("msg"), "Password changed.", "ok");
+    });
+  };
+  $("reloadBtn").onclick = function () { health(); if (currentTab) selectTab(currentTab); };
+  $("outBtn").onclick = function () {
+    var done = function () { clearToken(); me = null; boot(); };
+    if (token && me && me.mode === "directory") {
+      fetch("/api/auth/logout", { method: "POST", headers: headers() }).then(done, done);
+    } else {
+      done();
+    }
+  };
+
+  boot();
+})();
+</script>
+</body>
+</html>

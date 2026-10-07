@@ -1,0 +1,13 @@
+# Automatic HTTPS for Ask C4S. DOMAIN and ACME_EMAIL come from .env via
+# docker-compose.yml. Caddy answers the ACME challenge on port 80, redirects
+# http -> https, and proxies everything to the server container.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+	# The field app, the admin page and every /api/* route — including the
+	# streaming chat endpoint, which Caddy passes through unbuffered.
+	reverse_proxy askc4s:3030
+}

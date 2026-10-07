@@ -1,0 +1,63 @@
+# Build output
+dist/
+**/dist/
+build/
+**/build/
+
+# Dependencies
+node_modules/
+**/node_modules/
+.npm-cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECRETS — never commit. Use .env.example as the committed template.
+# ─────────────────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Local SQLite cache + per-install AES key + tenant catalog (encrypted but
+# still contains hostnames + integration usernames)
+data/
+# Scratch data folders (manual test instances, e.g. data-try/, data-smoke/)
+data-*/
+
+# Local clutter that has nearly been committed before: captured SAP responses
+# (real tickets/employees), SQLite caches, QA screenshots, demo recordings and
+# Office lock files. Nothing in here belongs in the repository.
+*.tmp.*
+*.db
+*.db-*
+.qa-*
+*.mp4
+~$*
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local override files for tools / linters
+.eslintcache
+.cache/
+.parcel-cache/
+
+# Vite intermediate
+**/.vite/
+
+# TypeScript build info
+*.tsbuildinfo
+**/*.tsbuildinfo

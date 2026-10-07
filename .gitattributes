@@ -1,0 +1,11 @@
+# Shell scripts must be LF, always.
+#
+# scripts/*.sh run in Linux CI (and inside containers). If they are ever
+# committed with CRLF — which happens the moment someone clones with a
+# different core.autocrlf setting — they fail with the cryptic
+# "bad interpreter: /usr/bin/env sh^M". Pin the line endings so the
+# containment check can't be broken by a workstation's git config.
+#
+# Deliberately narrow: only *.sh. A blanket rule here would renormalise the
+# whole tree and produce a huge unrelated diff.
+*.sh text eol=lf

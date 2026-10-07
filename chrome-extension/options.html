@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ask C4S — Settings</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 18px 22px;
+        width: 480px;
+        font-size: 13px;
+        color: #0f172a;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 14px;
+      }
+      h2 {
+        font-size: 13px;
+        margin: 18px 0 8px;
+        color: #475569;
+      }
+      label {
+        display: block;
+        margin-top: 12px;
+        font-size: 12px;
+        color: #475569;
+      }
+      input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 7px 10px;
+        margin-top: 4px;
+        font-size: 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-family: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button.primary {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+      }
+      button.google {
+        background: white;
+        color: #1f2937;
+        border: 1px solid #cbd5e1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        font-weight: 500;
+      }
+      button.google:hover {
+        background: #f8fafc;
+      }
+      .help {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      .saved {
+        color: #047857;
+        font-size: 12px;
+      }
+      .err {
+        color: #b91c1c;
+        font-size: 12px;
+      }
+      .user-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: linear-gradient(90deg, rgba(6,182,212,0.08), rgba(139,92,246,0.08));
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 8px;
+        margin-top: 8px;
+      }
+      .user-card img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+      }
+      .user-card .meta {
+        flex: 1;
+        min-width: 0;
+      }
+      .user-card .name {
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+      .user-card .email {
+        font-size: 11px;
+        color: #64748b;
+      }
+      hr {
+        margin: 18px 0;
+        border: none;
+        border-top: 1px solid #e2e8f0;
+      }
+      .banner {
+        margin: 0 0 14px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .banner-warn {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        color: #78350f;
+      }
+      .banner-info {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+      }
+      .banner code {
+        background: rgba(255, 255, 255, 0.6);
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Ask C4S — Settings</h1>
+
+    <div id="stale-context" class="banner banner-warn" style="display: none">
+      <strong>Extension was reloaded.</strong>
+      This page lost its connection to the extension —
+      <a href="#" id="reload-extension">reload this page</a>
+      to continue. (You can ignore any <em>"inline script"</em> or
+      <em>"context invalidated"</em> errors above; they're a side-effect.)
+    </div>
+
+    <div id="oauth-unconfigured" class="banner banner-info" style="display: none">
+      <strong>Google sign-in isn't wired up yet.</strong>
+      The extension ships with a placeholder OAuth client ID. To enable sign-in,
+      create a Chrome-Extension OAuth client at
+      <code>console.cloud.google.com/apis/credentials</code> using this
+      extension's ID, paste the client ID into
+      <code>chrome-extension/manifest.json</code> &rarr; <code>oauth2.client_id</code>,
+      then reload the extension. See the README's
+      <em>"Setting up Google SSO"</em> section for the full walkthrough.
+    </div>
+
+    <h2>Endpoint</h2>
+    <label for="endpoint">Server URL</label>
+    <input
+      id="endpoint"
+      type="text"
+      placeholder="http://127.0.0.1:3031"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Examples: <code>http://127.0.0.1:3031</code>, <code>https://askc4s.example.com</code>
+    </div>
+
+    <hr />
+
+    <!-- v0.27.46 — identity for the dashboard's My Day briefing. -->
+    <h2>My SAP identity</h2>
+    <label for="my-party-id">My party ID (technician / agent)</label>
+    <input
+      id="my-party-id"
+      type="text"
+      placeholder="e.g. 8000010249"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Used by the dashboard's <strong>My Day</strong> briefing to find tickets assigned
+      to you (service agent or technician on the header, or technician at line-item
+      level). Find it on any ticket assigned to you. Leave blank to let the panel try
+      matching your sign-in email against SAP's employee list.
+    </div>
+
+    <label for="my-display-name">Display name (dashboard greeting)</label>
+    <input
+      id="my-display-name"
+      type="text"
+      placeholder="e.g. Jane Doe"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Shown in the dashboard greeting (<em>"Good afternoon, …"</em>). Leave blank to let
+      the panel read it automatically from your signed-in SAP session.
+    </div>
+
+    <hr />
+
+    <h2>Sign in</h2>
+    <div id="signed-out" style="display: none">
+      <p class="help">
+        Sign in with your Google account. The extension sends your Google access token to the
+        C4S shim, which validates it server-side, checks your email domain against the
+        <code>ASKC4S_AUTH_ALLOWED_DOMAINS</code> allowlist, and issues a C4S session token.
+      </p>
+      <div class="row">
+        <button id="sign-in" class="google" type="button">
+          <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.185l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+          Sign in with Google
+        </button>
+        <span id="signin-error" class="err"></span>
+      </div>
+
+      <div id="pw-signin" style="margin-top: 16px">
+        <p class="help">
+          Or sign in with the email and password your administrator gave you. This is the
+          simplest option — no Google setup needed.
+        </p>
+        <label for="pw-email">Email</label>
+        <input id="pw-email" type="email" autocomplete="username" spellcheck="false" />
+        <label for="pw-password">Password</label>
+        <input id="pw-password" type="password" autocomplete="current-password" />
+        <div class="row">
+          <button id="pw-sign-in" type="button">Sign in</button>
+          <span id="pw-error" class="err"></span>
+        </div>
+      </div>
+
+      <div id="pw-change" style="display: none; margin-top: 16px">
+        <p class="help">
+          <strong>Choose a new password.</strong> You signed in with a temporary password;
+          pick your own to finish signing in.
+        </p>
+        <label for="pw-new">New password (at least 12 characters)</label>
+        <input id="pw-new" type="password" autocomplete="new-password" />
+        <label for="pw-new2">Repeat new password</label>
+        <input id="pw-new2" type="password" autocomplete="new-password" />
+        <div class="row">
+          <button id="pw-change-btn" type="button">Save password</button>
+          <span id="pw-change-error" class="err"></span>
+        </div>
+      </div>
+    </div>
+    <div id="signed-in" style="display: none">
+      <div class="user-card">
+        <img id="user-pic" src="" alt="" />
+        <div class="meta">
+          <div class="name" id="user-name"></div>
+          <div class="email" id="user-email"></div>
+        </div>
+        <button id="sign-out" type="button">Sign out</button>
+      </div>
+    </div>
+
+    <hr />
+
+    <h2>External KB search</h2>
+    <p class="help">
+      The <code>/knowledge</code> slash command can surface "Search the external KB"
+      shortcuts — pre-filled queries for the customer's own knowledge portal
+      (e.g. Thermo Fisher's <code>knowledge1.thermofisher.com</code>). Set the URL
+      template here; <code>{query}</code> is replaced with the URL-encoded
+      search string. Leave blank to hide the external-search section.
+    </p>
+    <label for="external-kb-url">URL template (use <code>{query}</code> as the placeholder)</label>
+    <input
+      id="external-kb-url"
+      type="text"
+      placeholder="https://knowledge1.thermofisher.com/Special:Search?search={query}"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Examples: <code>https://knowledge1.thermofisher.com/Special:Search?search={query}</code> (MindTouch — the standard for Thermo Fisher's knowledge base),
+      <code>https://www.google.com/search?q={query}</code>,
+      <code>https://your-confluence.atlassian.net/wiki/search?text={query}</code>.<br><br>
+      <strong>Verify the right format for your KB:</strong> run a manual search in your KB, copy the URL of the results page, and substitute the search term with <code>{query}</code>. For MindTouch (used by knowledge1.thermofisher.com), the correct path is <code>/Special:Search?search=</code> — NOT <code>/search?q=</code>.
+    </div>
+
+    <hr />
+
+    <h2>KB direct mode (bypass Azure AD)</h2>
+    <p class="help">
+      Call the external knowledge base <strong>directly from Chrome</strong> using
+      your existing browser session — no Azure AD app registration required.
+      You must be signed in to the KB in another Chrome tab. Useful when the shim
+      doesn't have Azure credentials configured.
+    </p>
+    <label for="kb-direct-url">KB base URL (no path)</label>
+    <input
+      id="kb-direct-url"
+      type="text"
+      placeholder="https://knowledge1.thermofisher.com"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Leave blank to keep using the shim's KB connector. When set, <code>/kb</code> and
+      <code>/kb-ticket</code> route directly to <code>&lt;url&gt;/@api/deki/site/search</code>
+      with your existing session cookies. If you see <code>Not signed in</code>, open the KB
+      in a Chrome tab, log in via SSO, then retry. The host must be in the extension's
+      <code>host_permissions</code> — <code>knowledge1.thermofisher.com</code> and
+      <code>*.thermofisher.com</code> are pre-granted.
+    </div>
+    <button type="button" id="kb-direct-test" class="ghost">Test direct call</button>
+    <span id="kb-direct-test-result" class="help" style="margin-left: 8px"></span>
+
+    <hr />
+
+    <!--
+      v0.26.51 — Parts-ordering processing type code (NOT consumption).
+      Clarified in v0.26.67: /order-parts uses Parts ORDERING semantics
+      (ZRP3 on Thermo Fisher's tenant), not Parts Consumption (SRP1).
+      The two are distinct SAP workflows: Ordering = request parts for
+      a future repair; Consumption = log parts already installed.
+    -->
+    <h2>Parts-ordering processing type code</h2>
+    <p class="help">
+      Used by <code>/order-parts</code> when committing line items to SAP
+      via <code>log_service_item</code>. <strong>This is for Parts
+      Ordering, not Parts Consumption</strong> — two distinct SAP
+      workflows. Default <strong>ZRP3</strong> for tenants using Thermo
+      Fisher's Z-prefix customer extension pattern (Parts Ordering).
+      Other tenants may use <code>ZRP1</code>, <code>ZSRP</code>, or
+      similar codes for parts ordering. If you see <em>"unknown message
+      type"</em> errors with the right code, the rejection is usually a
+      <strong>missing required field</strong> in the POST body (e.g.,
+      <code>ItemCategoryCode</code>, <code>BusinessTransactionDocumentItemTypeCode</code>) —
+      ask your SAP admin which fields are mandatory for parts-ordering
+      line items on <code>ServiceRequestItemCollection</code> on this
+      tenant, and check the shim console for the full SAP response.
+    </p>
+    <label for="part-processing-type-code">SAP processing-type code (3-5 chars, e.g., ZRP3, ZRP1, SRP1)</label>
+    <input
+      id="part-processing-type-code"
+      type="text"
+      placeholder="ZRP3"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="5"
+      style="width: 120px; text-transform: uppercase"
+    />
+
+    <hr />
+
+    <!--
+      v0.26.84 — Parts-inference allowlist for line-item search. Only
+      tickets with these processing-type codes contribute to the
+      structured parts-recurrence inference. Default SRP1,ZRP1 (parts
+      consumption codes). Excludes ZRP3 (ordering — may not be consumed
+      yet), ZALT (labor), SRPT (service), etc.
+    -->
+    <h2>Parts-inference: include processing types</h2>
+    <p class="help">
+      When <code>/order-parts</code> auto-suggests parts by scanning
+      similar past tickets, only line items with one of these processing-
+      type codes count toward the recurrence calculation. Default
+      <strong>SRP1,ZRP1</strong> — parts <em>consumption</em> codes
+      (parts that were actually used). Excludes <code>ZRP3</code>
+      (parts ordered but not yet consumed), <code>ZALT</code> (labor),
+      <code>SRPT</code> (service total), <code>REMOTE_DIAGNOSTIC</code>, etc.
+      Comma-separated. Codes are matched case-insensitively. Set blank to
+      disable the line-item path and use the LLM resolution-notes path only.
+    </p>
+    <label for="parts-inference-include-types">Allowlist (comma-separated SAP codes, e.g., SRP1,ZRP1)</label>
+    <input
+      id="parts-inference-include-types"
+      type="text"
+      placeholder="SRP1,ZRP1"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="60"
+      style="width: 280px; text-transform: uppercase"
+    />
+
+    <hr />
+
+    <h2>SLA Watcher</h2>
+    <p class="help">
+      Poll the C4S shim on a schedule and surface tickets whose SLA is about to
+      breach. When a new ticket crosses the threshold you get a desktop
+      notification (click to open it in the side panel) and the toolbar icon
+      shows the count. De-duped — you won't get re-notified for the same ticket
+      on every poll.
+    </p>
+    <div class="row" style="gap: 16px; flex-wrap: wrap">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="checkbox" id="sla-enabled" />
+        Enable SLA notifications + toolbar badge
+      </label>
+    </div>
+    <label for="sla-hours-ahead" style="margin-top: 14px">Hours ahead to flag</label>
+    <input
+      id="sla-hours-ahead"
+      type="text"
+      placeholder="24"
+      autocomplete="off"
+      spellcheck="false"
+      style="max-width: 110px"
+    />
+    <div class="help">
+      A ticket is "at risk" when its SLA breach is within this many hours.
+      Default 24 — sensible for most service desks. Lower values (6-12h) give
+      tighter notifications; higher (48-72h) gives more lead time. Min 1, max 168 (1 week).
+    </div>
+    <label for="sla-interval" style="margin-top: 14px">Polling interval (minutes)</label>
+    <input
+      id="sla-interval"
+      type="text"
+      placeholder="15"
+      autocomplete="off"
+      spellcheck="false"
+      style="max-width: 110px"
+    />
+    <div class="help">
+      How often to check. Chrome enforces a 5-minute minimum for background
+      polling, and we cap at 60. Default 15.
+    </div>
+
+    <hr />
+
+    <h2>Auto Customer Pulse</h2>
+    <p class="help">
+      Fire <code>/pulse</code> automatically as soon as the side panel or popup
+      detects a SAP ticket — surfaces a <strong>Customer Pulse</strong> card at
+      the top of the panel with a 🟢/🟡/🔴 health score, reasons (recent SLA
+      misses, repeat issues, negative tone in past notes), and 3-4 personalised
+      handling suggestions for THIS ticket. Independent of auto-triage and
+      auto-KB — renders to its own card area so they can all run together.
+      Results cached per-customer for 2 hours.
+    </p>
+    <div class="row" style="gap: 16px; flex-wrap: wrap">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-pulse" value="off" />
+        Off (manual)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-pulse" value="once" />
+        Once per ticket (recommended)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-pulse" value="always" />
+        Every time
+      </label>
+    </div>
+
+    <hr />
+
+    <h2>Auto-triage</h2>
+    <p class="help">
+      Fire <code>/triage</code> automatically as soon as the side panel or popup
+      detects a SAP ticket — no need to type the slash command yourself.
+    </p>
+    <div class="row" style="gap: 16px; flex-wrap: wrap">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-triage" value="off" />
+        Off (manual)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-triage" value="once" />
+        Once per ticket (recommended)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-triage" value="always" />
+        Every time
+      </label>
+    </div>
+    <div class="help" style="margin-top: 4px">
+      <em>Once per ticket</em> remembers tickets you've already triaged in this
+      browser session and skips them — avoids burning tokens re-triaging the same
+      ticket every time you click into it.
+    </div>
+
+    <hr />
+
+    <h2>Auto-fetch KB articles</h2>
+    <p class="help">
+      Fire <code>/kb-ticket</code> automatically as soon as the side panel or popup
+      detects a SAP ticket — pulls related knowledge-base articles without you
+      needing to type the slash command. Mutually exclusive with auto-triage:
+      if both are enabled, <strong>auto-triage wins</strong> and KB auto-fetch
+      is skipped (so they don't fight for the reply box).
+    </p>
+    <div class="row" style="gap: 16px; flex-wrap: wrap">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb" value="off" />
+        Off (manual)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb" value="once" />
+        Once per ticket (recommended)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb" value="always" />
+        Every time
+      </label>
+    </div>
+    <div class="help" style="margin-top: 4px">
+      <em>Once per ticket</em> remembers tickets you've already KB-fetched for
+      in this browser session and skips them — avoids re-running the same KB
+      search every time you click into a ticket.
+    </div>
+
+    <hr />
+
+    <h2>Auto-fetch KB resolutions (deep)</h2>
+    <p class="help">
+      Fire <code>/kb-resolve</code> automatically when a ticket is detected — the
+      deep variant that searches the KB across 5 query angles, fetches the
+      top article bodies, and uses the LLM to extract the actual <em>fix
+      steps</em> per article. Slower than <code>/kb-ticket</code> (~8-12s) but
+      surfaces the answer, not just the titles. <strong>Requires KB direct
+      mode configured</strong> (see "KB direct mode" section above). Mutually
+      exclusive with auto-triage and auto-fetch KB articles; precedence is
+      <strong>auto-triage &gt; auto-kb-resolve &gt; auto-kb-ticket</strong>.
+    </p>
+    <div class="row" style="gap: 16px; flex-wrap: wrap">
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb-resolve" value="off" />
+        Off (manual)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb-resolve" value="once" />
+        Once per ticket (recommended)
+      </label>
+      <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #0f172a;">
+        <input type="radio" name="auto-kb-resolve" value="always" />
+        Every time
+      </label>
+    </div>
+    <div class="help" style="margin-top: 4px">
+      Silently skipped when KB direct mode isn't configured — no point firing
+      a command that'd just info-fail. Set the base URL in <em>KB direct
+      mode</em> first.
+    </div>
+
+    <hr />
+
+    <h2>Saved templates</h2>
+    <p class="help">
+      Templates appear as chips in the popup/side panel — click one to fill the
+      prompt textarea. Built-in templates ship with the extension; hiding one
+      removes the chip but doesn't delete it. Your own templates sync via your
+      Chrome profile across devices.
+    </p>
+    <div id="templates-list" style="margin-top: 8px"></div>
+    <div class="help" style="margin-top: 8px">
+      Tip: use <em>⋯ → ⭐ Save as template</em> in the panel's action bar to add
+      a new template from whatever prompt you've just typed.
+    </div>
+    <!--
+      v0.27.39 — adaptive chip ordering. The panel counts how often each
+      chip is run (chrome.storage.local `c4s.chip-usage`) and promotes
+      the most-used into the always-visible top row. This resets the
+      counts back to the curated default order.
+    -->
+    <div style="margin-top: 12px">
+      <button id="reset-chip-order" type="button">↺ Reset chip order</button>
+      <span class="help" style="margin-left: 8px">
+        Chips reorder by how often you use them. This resets to the default order.
+      </span>
+      <span id="reset-chip-order-status" class="help" style="margin-left: 8px"></span>
+    </div>
+
+    <hr />
+
+    <h2>Manual override</h2>
+    <label for="token">Bearer token (optional)</label>
+    <input
+      id="token"
+      type="password"
+      placeholder="Only if ASKC4S_INTERNAL_PASSWORD is set + you don't use SSO"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="help">
+      Leave blank when signed in with your account or via Google (those tokens take precedence).
+      Only for deployments still on the shared password: paste the token returned by
+      <code>POST /api/internal/auth</code>.
+    </div>
+
+    <div class="row">
+      <button id="save" class="primary">Save</button>
+      <span id="saved-msg" class="saved" style="display: none">Saved ✓</span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

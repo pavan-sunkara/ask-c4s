@@ -1,0 +1,61 @@
+# =============================================================================
+# .dockerignore — what NOT to copy into the Docker build context.
+#
+# Keeps images small + prevents secrets / build artefacts from leaking into
+# the image layer cache. The Dockerfile does its own clean install + build
+# inside the image, so most of these would be wasted bytes anyway.
+# =============================================================================
+
+# Build outputs — Dockerfile rebuilds these inside the image
+dist/
+**/dist/
+build/
+**/build/
+
+# Dependencies — npm ci runs inside the image
+node_modules/
+**/node_modules/
+.npm-cache/
+
+# Secrets — must NEVER end up in an image layer
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+
+# Local cache / data files
+data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Git metadata — not needed at runtime, bloats build context
+.git/
+.gitignore
+.gitattributes
+
+# IDE / editor noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Logs + reports
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Test outputs
+coverage/
+.nyc_output/
+
+
+# Markdown docs (uncomment if you want a leaner build context — README is fine to keep)
+# *.md
+# docs/

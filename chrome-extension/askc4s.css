@@ -1,0 +1,203 @@
+/*
+ * Ask C4S — SHARED DESIGN SYSTEM (single source of truth).
+ * ===========================================================================
+ * This is the ONE place the product's look is defined: tokens, cards, buttons,
+ * pills, inputs, banners, key-value rows, markdown, and — importantly — the
+ * LOADERS. Every thin door links this file so the surfaces read as one product
+ * and there's a single file to maintain.
+ *
+ *   apps/mobile-pwa   → <link href="/shared/askc4s.css">   (served by the shim)
+ *   apps/light-admin  → <link href="/shared/askc4s.css">
+ *   chrome-extension  → migrates onto this next (see docs/engineering-notes.md): the popup's
+ *                       ~6k-line inline <style> is the ORIGIN these values were
+ *                       extracted from, so adopting it is a visual no-op — but
+ *                       it can't be rendered headlessly to verify, so it's a
+ *                       deliberate Chrome-verified step, not done blind.
+ *
+ * WHAT LIVES HERE: design-system primitives common to every surface.
+ * WHAT DOES NOT:   per-door SHELL layout (the extension's command box, the
+ *                  PWA's gradient header + bottom nav) and per-flow panel
+ *                  styles — those are surface/flow specific and stay local
+ *                  until a flow's renderer is itself shared.
+ *
+ * Palette + loader values are lifted from chrome-extension/popup.html so the
+ * two match by origin, not by hand-copying. Light theme (the extension's).
+ */
+
+:root {
+  /* Neutrals — the extension's slate scale. */
+  --bg: #f8fafc;        /* page background (slate-50) */
+  --card: #ffffff;      /* card / surface */
+  --card2: #f1f5f9;     /* secondary surface / muted background (--muted in the extension) */
+  --fg: #0f172a;        /* foreground text */
+  --muted: #64748b;     /* muted text (--muted-fg in the extension) */
+  --faint: #94a3b8;     /* faint text / hints */
+  --line: #e2e8f0;      /* borders */
+
+  /* Brand — the extension's --primary family (cyan → blue → violet). */
+  --accent: #3b82f6;    /* primary-bright (buttons, active states) */
+  --cyan: #0891b2;      /* primary, as a TEXT accent legible on white */
+  --violet: #8b5cf6;    /* primary-deep (gradient tail) */
+
+  /* Status — darkened for legibility on a light background. */
+  --good: #059669;
+  --warn: #b45309;
+  --danger: #dc2626;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* --- base ---------------------------------------------------------------- */
+.c4s-body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
+/* --- cards -------------------------------------------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+/* Title / caption / id — used across ticket cards and panels. */
+.tt { font-size: 14.5px; font-weight: 700; margin: 3px 0 4px; line-height: 1.3; color: var(--fg); }
+.tc { font-size: 12.5px; color: var(--muted); }
+.tid { font-family: var(--mono); font-size: 12px; color: var(--cyan); font-weight: 700; }
+.t { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+
+/* Key/value rows (spec-sheet style). */
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.kv:last-child { border-bottom: 0; }
+.kv span:first-child { color: var(--muted); }
+.kv span:last-child { text-align: right; font-weight: 600; }
+
+/* Section heading. */
+.section-title, h2.c4s { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 2px 0 10px; font-weight: 700; }
+
+/* --- pills / status badges --------------------------------------------- */
+.pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-family: var(--mono); border: 1px solid transparent; }
+.p-open  { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.p-prog  { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.p-other { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+
+/* --- buttons ----------------------------------------------------------- */
+button, .btn {
+  font: inherit; font-weight: 600; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--fg); padding: 11px 14px; cursor: pointer; font-size: 14px;
+}
+button.primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.ghost, .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+button:disabled, .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* --- inputs ------------------------------------------------------------ */
+input, select, textarea {
+  font: inherit; font-size: 16px; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--fg); width: 100%;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+label { display: block; font-size: 12.5px; color: var(--muted); margin: 0 0 5px; font-weight: 600; }
+
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+.empty { text-align: center; color: var(--faint); padding: 40px 16px; font-size: 14px; }
+a { color: var(--cyan); }
+
+/* --- banners ----------------------------------------------------------- */
+.banner { display: none; padding: 9px 12px; border-radius: 8px; font-size: 12.5px; margin-bottom: 12px; }
+.banner.show { display: block; }
+.banner.offline { background: #fffbeb; color: var(--warn); border: 1px solid #fde68a; }
+.banner.err { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+
+/* --- LOADERS ----------------------------------------------------------- */
+/* The extension's progress strip (multi-step). Field techs already know this
+   look from the side panel; the PWA now shows the identical loader. */
+.progress-strip {
+  margin: 8px 0 4px; padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,.05), rgba(139,92,246,.05));
+  border: 1px solid rgba(6,182,212,.18); border-radius: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.progress-step { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.progress-step-pending { color: var(--fg); font-weight: 500; }
+.progress-step-done { color: var(--muted); }
+.progress-step-error { color: #b91c1c; font-weight: 500; }
+.progress-spinner {
+  width: 11px; height: 11px; border: 1.5px solid rgba(6,182,212,.25); border-top-color: var(--cyan);
+  border-radius: 50%; display: inline-block; animation: c4sSpin 700ms linear infinite; flex-shrink: 0;
+}
+.progress-icon-done { font-size: 11.5px; font-weight: 700; color: var(--good); width: 11px; height: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.progress-icon-error { font-size: 11.5px; color: #b91c1c; font-weight: 700; width: 11px; flex-shrink: 0; }
+.progress-message { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Plain inline spinner, when a single "working…" is enough. */
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(6,182,212,.25); border-top-color: var(--cyan);
+  border-radius: 50%; display: inline-block; animation: c4sSpin 700ms linear infinite; vertical-align: middle;
+}
+@keyframes c4sSpin { to { transform: rotate(360deg); } }
+
+/* Skeleton shimmer for list loads. */
+.skel { height: 74px; border-radius: 12px; background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7); background-size: 200% 100%; animation: c4sShimmer 1.2s infinite; margin-bottom: 10px; }
+@keyframes c4sShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel, .spinner, .progress-spinner { animation: none; } }
+
+/* --- markdown (LLM replies) -------------------------------------------- */
+.reply { font-size: 13px; word-break: break-word; }
+.reply h1, .reply h2, .reply h3 { margin: 12px 0 6px; font-weight: 600; }
+.reply strong { font-weight: 600; }
+.reply code { font-family: var(--mono); font-size: 12px; background: var(--card2); padding: 1px 5px; border-radius: 4px; }
+.reply pre { background: var(--card2); padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+.reply ul, .reply ol { margin: 6px 0 6px 18px; }
+
+/* --- command palette: command box + phase-grouped chip grid ------------ */
+/* Lifted from the extension's popup.html so the two home pages match. The
+   command textarea + the 4-phase chip grid (Discovery/Troubleshooting/
+   Resolution/Closure) render identically on both doors. */
+.cmd-box {
+  width: 100%; box-sizing: border-box; resize: none; min-height: 60px;
+  font: inherit; font-size: 14px; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg);
+}
+.cmd-box:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+
+.template-chips.phase-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px; align-items: start; margin-top: 10px;
+}
+.chip-phase-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.chip-phase-header {
+  margin: 0 0 2px; padding-bottom: 3px; border-bottom: 1px solid var(--line);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--muted); user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.template-chip {
+  font-size: 11.5px; padding: 8px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(100, 116, 139, .35); background: rgba(100, 116, 139, .08);
+  color: #475569; font-family: inherit; display: flex; align-items: center;
+  justify-content: flex-start; gap: 4px; width: 100%; box-sizing: border-box;
+  white-space: normal; line-height: 1.25; text-align: left; font-weight: 600;
+}
+.template-chip:active { filter: brightness(.95); }
+/* Category = colour: green triage/read · orange parts · blue field · violet knowledge. */
+.template-chip[data-category="triage"]    { background: rgba(16, 185, 129, .10); border-color: rgba(16, 185, 129, .45); color: #047857; }
+.template-chip[data-category="parts"]     { background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .50); color: #92400e; }
+.template-chip[data-category="field"]     { background: rgba(59, 130, 246, .10); border-color: rgba(59, 130, 246, .45); color: #1d4ed8; }
+.template-chip[data-category="knowledge"] { background: rgba(139, 92, 246, .10); border-color: rgba(139, 92, 246, .45); color: #6d28d9; }
+.template-chip[data-category="comms"], .template-chip[data-category="close"] { color: #475569; }
+.template-chip.soon { opacity: .5; }
+
+/* The detected-ticket pill (extension) / current-ticket pill (PWA). */
+.ticket-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px; background: rgba(6, 182, 212, .10);
+  border: 1px solid rgba(6, 182, 212, .35); color: var(--cyan); cursor: pointer;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ticket-pill.empty { background: var(--card2); border-color: var(--line); color: var(--muted); }

@@ -1,0 +1,38 @@
+{
+  "name": "ask-c4s",
+  "version": "0.27.86",
+  "description": "Ask C4S — SAP C4C service companion: shim + MCP tools, Chrome extension, field PWA and admin page.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node scripts/dev.mjs",
+    "dev": "node scripts/dev.mjs",
+    "stop": "node scripts/dev.mjs --stop",
+    "build": "tsc",
+    "web": "tsc && node dist/uiServer.js",
+    "start:web": "node dist/uiServer.js",
+    "start:prod": "npm run build && node dist/uiServer.js",
+    "users": "node dist/usersCli.js",
+    "test:users": "npm run build && node scripts/smoke-users.mjs",
+    "mcp": "node dist/index.js",
+    "mcp:dev": "tsx src/index.ts",
+    "mcp:inspect": "tsc && mcp-inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^5.8.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.21.2",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
