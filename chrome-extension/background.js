@@ -25,18 +25,23 @@ const SLA_HOURS_AHEAD_KEY = "c4s.sla-watch.hoursAhead";
 const SLA_INTERVAL_KEY = "c4s.sla-watch.intervalMinutes";
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: CONTEXT_MENU_ID,
-    title: 'Ask C4S about "%s"',
-    contexts: ["selection"],
-  });
-  // KB search — operator selects an error code, symptom, part number,
-  // whatever, right-clicks, and the panel opens with `/kb <selection>`
-  // pre-filled. One click on Ask runs the search.
-  chrome.contextMenus.create({
-    id: CONTEXT_MENU_KB_ID,
-    title: 'Search C4S knowledge base for "%s"',
-    contexts: ["selection"],
+  // removeAll first: on a reload/update the items may already exist, and a bare
+  // create() then logs "Cannot create item with duplicate id". Clearing first
+  // makes re-registration idempotent and keeps the Errors page clean.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID,
+      title: 'Ask C4S about "%s"',
+      contexts: ["selection"],
+    });
+    // KB search — operator selects an error code, symptom, part number,
+    // whatever, right-clicks, and the panel opens with `/kb <selection>`
+    // pre-filled. One click on Ask runs the search.
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_KB_ID,
+      title: 'Search C4S knowledge base for "%s"',
+      contexts: ["selection"],
+    });
   });
   // Re-initialise the SLA watcher on every install/update so manifest
   // permission bumps take effect cleanly.
