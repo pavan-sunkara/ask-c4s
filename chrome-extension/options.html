@@ -151,8 +151,8 @@
 
     <div id="oauth-unconfigured" class="banner banner-info" style="display: none">
       <strong>Single sign-on (SSO) isn't set up in this environment yet.</strong>
-      For now, sign in with the email and password your administrator gave you
-      (below). Once SSO is configured for this deployment, you'll sign in with
+      For now, sign in from the Ask C4S panel — click the Ask C4S icon in your
+      toolbar. Once SSO is configured for this deployment, you'll sign in with
       your corporate account instead.
     </div>
 
@@ -206,18 +206,19 @@
     <h2>Sign in</h2>
     <div id="signed-out" style="display: none">
       <p class="help">
-        Sign in with the email and password your administrator gave you.
-        Single sign-on with your corporate account will appear here once SSO is
-        configured for your organisation.
+        <strong>Sign in from the Ask C4S panel.</strong> Click the Ask C4S icon in your
+        browser toolbar — your session is shared, so signing in there signs you in here
+        too. (These settings are read-only for agents and managers.)
       </p>
-      <!-- SSO button — hidden until SSO is configured for this deployment (see
-           options.js). The element is kept so the sign-in wiring stays intact. -->
-      <div class="row" id="sso-row">
+      <!-- Legacy in-page sign-in — hidden now that sign-in happens in the panel.
+           The elements are kept (display:none) so the existing wiring never hits a
+           null, and so the SSO button can be revealed again if SSO is ever enabled. -->
+      <div class="row" id="sso-row" style="display: none">
         <button id="sign-in" type="button">Sign in with SSO</button>
         <span id="signin-error" class="err"></span>
       </div>
 
-      <div id="pw-signin" style="margin-top: 16px">
+      <div id="pw-signin" style="display: none; margin-top: 16px">
         <label for="pw-email">Email</label>
         <input id="pw-email" type="email" autocomplete="username" spellcheck="false" />
         <label for="pw-password">Password</label>

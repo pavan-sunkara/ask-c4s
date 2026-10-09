@@ -834,6 +834,70 @@ function showSignInRequired() {
       "padding:7px 14px;border:1px solid #b45309;border-radius:6px;background:#f59e0b;" +
       "color:#1c1917;font-weight:600;cursor:pointer;font-size:12.5px";
 
+    // First-time password change — shown inline when the account signed in with a
+    // temporary password. Handled here so sign-in is complete in the panel and
+    // never has to bounce the user to Options.
+    const pwChangeWrap = document.createElement("div");
+    pwChangeWrap.style.display = "none";
+    const newPw = document.createElement("input");
+    newPw.type = "password"; newPw.placeholder = "New password (min 12 chars)"; newPw.autocomplete = "new-password";
+    const newPw2 = document.createElement("input");
+    newPw2.type = "password"; newPw2.placeholder = "Repeat new password"; newPw2.autocomplete = "new-password";
+    for (const el of [newPw, newPw2]) {
+      el.style.cssText =
+        "display:block;width:100%;box-sizing:border-box;margin-bottom:6px;padding:7px 9px;" +
+        "border:1px solid #d6d3d1;border-radius:6px;font-size:13px";
+    }
+    const changeErr = document.createElement("div");
+    changeErr.style.cssText = "color:#b91c1c;min-height:14px;margin-bottom:6px;font-size:12px";
+    const changeBtn = document.createElement("button");
+    changeBtn.textContent = "Set password & sign in";
+    changeBtn.style.cssText =
+      "padding:7px 14px;border:1px solid #b45309;border-radius:6px;background:#f59e0b;" +
+      "color:#1c1917;font-weight:600;cursor:pointer;font-size:12.5px";
+    pwChangeWrap.append(newPw, newPw2, changeErr, changeBtn);
+
+    // Holds the temp-password session until a real password is chosen. Kept in
+    // memory only (never stored) so the rest of the extension never runs on a
+    // half-usable token — mirrors the Options flow.
+    let pendingLogin = null;
+
+    async function doChangePassword() {
+      changeErr.textContent = "";
+      if (!pendingLogin) return;
+      const n1 = newPw.value, n2 = newPw2.value;
+      if (!n1 || n1.length < 12) { changeErr.textContent = "Use at least 12 characters."; return; }
+      if (n1 !== n2) { changeErr.textContent = "The new passwords don't match."; return; }
+      changeBtn.disabled = true; changeBtn.textContent = "Saving…";
+      try {
+        const endpoint = (await getEndpoint()).replace(/\/$/, "");
+        const r = await fetch(`${endpoint}/api/auth/change-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${pendingLogin.token}` },
+          body: JSON.stringify({ currentPassword: pendingLogin.currentPassword, newPassword: n1 }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data.ok === false) {
+          changeErr.textContent = data.error || `Couldn't set password (HTTP ${r.status}).`;
+          changeBtn.disabled = false; changeBtn.textContent = "Set password & sign in";
+          return;
+        }
+        const { token, user, ttlSec } = pendingLogin;
+        pendingLogin = null;
+        await chrome.storage.sync.set({
+          "sso-token": token,
+          "sso-user": user,
+          "sso-expires-at": Date.now() + (ttlSec || 86400) * 1000,
+        });
+        location.reload();
+      } catch (ex) {
+        changeErr.textContent = ex instanceof Error ? ex.message : String(ex);
+        changeBtn.disabled = false; changeBtn.textContent = "Set password & sign in";
+      }
+    }
+    changeBtn.addEventListener("click", doChangePassword);
+    newPw2.addEventListener("keydown", (ev) => { if (ev.key === "Enter") doChangePassword(); });
+
     async function doSignIn() {
       err.textContent = "";
       const e = email.value.trim(), p = password.value;
@@ -853,8 +917,13 @@ function showSignInRequired() {
           return;
         }
         if (data.mustChangePassword) {
-          err.textContent = "This account must set a new password first — open Options (⚙) to do that.";
-          btn.disabled = false; btn.textContent = "Sign in";
+          // Temp password — switch the form over to "choose a new password".
+          pendingLogin = { token: data.token, user: { ...data.user, role: data.role }, ttlSec: data.ttlSec, currentPassword: p };
+          sub.textContent = "Choose a new password to finish signing in.";
+          err.textContent = "";
+          email.style.display = "none"; password.style.display = "none"; btn.style.display = "none";
+          pwChangeWrap.style.display = "block";
+          try { newPw.focus(); } catch { /* ignore */ }
           return;
         }
         // Store the session the same way the Options sign-in does, so the whole
@@ -873,7 +942,7 @@ function showSignInRequired() {
     btn.addEventListener("click", doSignIn);
     password.addEventListener("keydown", (ev) => { if (ev.key === "Enter") doSignIn(); });
 
-    box.append(head, sub, note, email, password, err, btn);
+    box.append(head, sub, note, email, password, err, btn, pwChangeWrap);
     (document.body || document.documentElement).prepend(box);
     try { email.focus(); } catch { /* ignore */ }
   } catch {
