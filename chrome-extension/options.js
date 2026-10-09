@@ -576,6 +576,43 @@ function escapeText(s) {
     .replace(/>/g, "&gt;");
 }
 
+// Non-admins (agent / manager) get a read-only Options page: they can sign in
+// or out and see their identity, but can't change any settings. Owners/admins —
+// and signed-out users, so first-time endpoint setup still works — are unlocked.
+// Note: these are client-side (chrome.storage) settings, so this is a UI guard,
+// not a hard lock; push settings via Chrome managed policy for a true lockdown.
+function applyRoleRestrictions(role) {
+  const isAdmin = role === "owner" || role === "admin";
+  const locked = Boolean(role) && !isAdmin;
+
+  let banner = document.getElementById("c4s-readonly-banner");
+  if (locked) {
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "c4s-readonly-banner";
+      banner.className = "banner banner-info";
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+    banner.textContent =
+      "You're signed in as " + role + ". These settings are managed by your " +
+      "administrator and are read-only here.";
+    banner.style.display = "block";
+  } else if (banner) {
+    banner.style.display = "none";
+  }
+
+  // Never lock the sign-in / sign-out controls — the user must always be able
+  // to sign in or out even when everything else is read-only.
+  const authEls = new Set();
+  for (const id of ["signed-out", "signed-in"]) {
+    const sec = document.getElementById(id);
+    if (sec) sec.querySelectorAll("input, select, textarea, button").forEach((el) => authEls.add(el));
+  }
+  document.querySelectorAll("input, select, textarea, button").forEach((el) => {
+    if (!authEls.has(el)) el.disabled = locked;
+  });
+}
+
 function renderAuthSection(ssoToken, ssoUser) {
   const signedIn = Boolean(ssoToken && ssoUser);
   $("signed-out").style.display = signedIn ? "none" : "block";
@@ -591,6 +628,7 @@ function renderAuthSection(ssoToken, ssoUser) {
       $("user-pic").style.display = "none";
     }
   }
+  applyRoleRestrictions(signedIn ? ssoUser.role : null);
 }
 
 async function signInWithGoogle() {
