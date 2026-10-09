@@ -807,6 +807,14 @@ function showSignInRequired() {
     sub.textContent = "Enter the email and password your administrator gave you.";
     sub.style.cssText = "margin-bottom:8px";
 
+    // Static sandbox note — remove/adjust when SSO is enabled for the deployment.
+    const note = document.createElement("div");
+    note.textContent =
+      "Sandbox environment — single sign-on (SSO) isn't enabled yet. Use the demo user account to sign in.";
+    note.style.cssText =
+      "margin-bottom:8px;padding:6px 8px;background:#fef9c3;border:1px solid #fde68a;" +
+      "border-radius:6px;font-size:11.5px;color:#854d0e;line-height:1.35";
+
     const email = document.createElement("input");
     email.type = "email"; email.placeholder = "Email"; email.autocomplete = "username";
     const password = document.createElement("input");
@@ -865,7 +873,7 @@ function showSignInRequired() {
     btn.addEventListener("click", doSignIn);
     password.addEventListener("keydown", (ev) => { if (ev.key === "Enter") doSignIn(); });
 
-    box.append(head, sub, email, password, err, btn);
+    box.append(head, sub, note, email, password, err, btn);
     (document.body || document.documentElement).prepend(box);
     try { email.focus(); } catch { /* ignore */ }
   } catch {
