@@ -3616,14 +3616,18 @@ function initReplyEditorButtons() {
 //      without an intervening `await` that would also drop the gesture.
 
 let cachedNormalWindowId = null;
+let cachedNormalTabId = null;
 
 function primeSidePanelTarget() {
   // Use the callback form (not the promise) so this initial query runs
   // off the main task queue — we never await this from a gesture path.
+  // populate:true so we can grab the window's active tab — the side panel
+  // must be opened BY TAB (see fireSidePanelOpen).
   try {
-    chrome.windows.getLastFocused({ windowTypes: ["normal"] }, (win) => {
+    chrome.windows.getLastFocused({ windowTypes: ["normal"], populate: true }, (win) => {
       if (chrome.runtime.lastError) return;
       cachedNormalWindowId = win?.id ?? null;
+      cachedNormalTabId = (win?.tabs || []).find((t) => t.active)?.id ?? null;
     });
   } catch {
     /* Older Chrome / no normal window — fall back at click time */
@@ -3631,14 +3635,14 @@ function primeSidePanelTarget() {
 }
 
 function openInSidePanel() {
-  // Fast path: cached id from popup-load query.
-  if (cachedNormalWindowId != null) {
-    fireSidePanelOpen(cachedNormalWindowId);
+  // Fast path: cached ids from popup-load query.
+  if (cachedNormalTabId != null || cachedNormalWindowId != null) {
+    fireSidePanelOpen(cachedNormalWindowId, cachedNormalTabId);
     return;
   }
   // Cold path: query inside the gesture. The callback form keeps the
   // gesture alive on Chrome 116+ as long as we don't `await` first.
-  chrome.windows.getLastFocused({ windowTypes: ["normal"] }, (win) => {
+  chrome.windows.getLastFocused({ windowTypes: ["normal"], populate: true }, (win) => {
     if (chrome.runtime.lastError || !win?.id) {
       showActionStatus(
         `Couldn't find a browser window: ${chrome.runtime.lastError?.message ?? "no normal window"}`,
@@ -3647,29 +3651,37 @@ function openInSidePanel() {
       return;
     }
     cachedNormalWindowId = win.id;
-    fireSidePanelOpen(win.id);
+    cachedNormalTabId = (win.tabs || []).find((t) => t.active)?.id ?? null;
+    fireSidePanelOpen(win.id, cachedNormalTabId);
   });
 }
 
-function fireSidePanelOpen(windowId) {
-  // chrome.sidePanel.open returns a Promise, but the user-gesture check
-  // is performed at INVOCATION — by the time the promise resolves, the
-  // panel is already opening. Don't await; chain `.then` for the close.
+function fireSidePanelOpen(windowId, tabId) {
+  // Open BY TAB when we have one. The panel path is configured per-tab (there
+  // is no manifest default_path, so the panel can be scoped to C4C/admin tabs),
+  // which means open({windowId}) has no global panel to show and fails with
+  // "No active side panel for windowId". open({tabId}) uses that tab's own
+  // enabled panel — which the background enables on C4C and admin tabs.
+  //
+  // chrome.sidePanel.open returns a Promise, but the user-gesture check is
+  // performed at INVOCATION — by the time the promise resolves, the panel is
+  // already opening. Don't await; chain `.then` for the close.
+  const target = tabId != null ? { tabId } : { windowId };
   try {
     chrome.sidePanel
-      .open({ windowId })
+      .open(target)
       .then(() => {
         if (!IS_SIDEPANEL) window.close();
       })
       .catch((err) => {
         showActionStatus(
-          `Couldn't open side panel: ${err?.message ?? err}. Make sure you're on Chrome 116+.`,
+          `Couldn't open side panel: ${err?.message ?? err}. Open this from a C4C or admin tab (Chrome 116+).`,
           "failure",
         );
       });
   } catch (e) {
     showActionStatus(
-      `Couldn't open side panel: ${e?.message ?? e}. Make sure you're on Chrome 116+.`,
+      `Couldn't open side panel: ${e?.message ?? e}. Open this from a C4C or admin tab (Chrome 116+).`,
       "failure",
     );
   }
