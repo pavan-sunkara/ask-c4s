@@ -126,7 +126,7 @@ async function callAnthropic(req: ChatRequest): Promise<ChatResponse> {
     return {
       ok: false,
       error:
-        "ANTHROPIC_API_KEY is not set. Configure it in .env, or set the ai.anthropic_key setting in /settings.",
+        "ANTHROPIC_API_KEY is not set. Configure it in .env, or set the ai.anthropic.api_key setting in /settings.",
     };
   }
 
@@ -328,7 +328,7 @@ async function streamFromAnthropic(
     return {
       ok: false,
       error:
-        "ANTHROPIC_API_KEY is not set. Configure it in .env, or set the ai.anthropic_key setting in /settings.",
+        "ANTHROPIC_API_KEY is not set. Configure it in .env, or set the ai.anthropic.api_key setting in /settings.",
     };
   }
   const model = resolveAnthropicModel(req.model);
