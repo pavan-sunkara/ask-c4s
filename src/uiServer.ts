@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { formatToolError, odataStringLiteral } from "./c4cClient.js";
 import {
   getAccount,
@@ -66,9 +67,15 @@ import {
   searchTickets,
 } from "./serviceOps.js";
 import {
+  deleteAnonymousAuthTokens,
+  deleteAuthToken,
+  deleteAuthTokensForUser,
+  getAuthToken,
   listRecent,
+  putAuthToken,
   readHistoryCache,
   readTicketCache,
+  sweepExpiredAuthTokens,
   touchRecent,
   writeHistoryCache,
   writeTicketCache,
@@ -574,7 +581,12 @@ type TokenRecord = {
    */
   userId?: string;
 };
-const internalTokens = new Map<string, TokenRecord>();
+// Session tokens live in the DB (src/cache.ts) so a restart / redeploy doesn't
+// sign everyone out. Rows are keyed on the SHA-256 of the token, never the raw
+// value, so a leaked DB can't be replayed as a live session.
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 // Short-lived PKCE/state store for the Entra OIDC redirect flow. Keyed by the
 // `state` param; holds the code_verifier between /start and /callback. In-memory
@@ -593,36 +605,37 @@ function issueInternalToken(opts: Omit<TokenRecord, "expiresAt"> = { source: "pa
     typeof globalThis.crypto?.randomUUID === "function"
       ? globalThis.crypto.randomUUID().replace(/-/g, "")
       : Math.random().toString(16).slice(2) + Date.now().toString(16);
-  internalTokens.set(token, {
+  putAuthToken(hashToken(token), {
     expiresAt: Date.now() + INTERNAL_TOKEN_TTL_MS,
     source: opts.source,
     user: opts.user,
     userId: opts.userId,
   });
-  // Lazy GC — drop expired entries when the map grows.
-  if (internalTokens.size > 50) {
-    const now = Date.now();
-    for (const [k, rec] of internalTokens) {
-      if (rec.expiresAt < now) internalTokens.delete(k);
-    }
-  }
+  sweepExpiredAuthTokens();
   return token;
 }
 
 function verifyInternalToken(token: string): TokenRecord | null {
-  const rec = internalTokens.get(token);
-  if (!rec) return null;
-  if (rec.expiresAt < Date.now()) {
-    internalTokens.delete(token);
+  const hash = hashToken(token);
+  const stored = getAuthToken(hash);
+  if (!stored) return null;
+  if (stored.expiresAt < Date.now()) {
+    deleteAuthToken(hash);
     return null;
   }
+  const rec: TokenRecord = {
+    expiresAt: stored.expiresAt,
+    source: stored.source as TokenRecord["source"],
+    user: stored.user,
+    userId: stored.userId,
+  };
   if (rec.userId) {
     // A directory token is only as good as its account: disabled or deleted
     // accounts lose access on the very next request. Name/email are refreshed
     // from the database so an edit shows up without signing in again.
     const account = getActiveUserLite(rec.userId);
     if (!account) {
-      internalTokens.delete(token);
+      deleteAuthToken(hash);
       return null;
     }
     rec.user = { email: account.email, name: account.name ?? undefined, picture: rec.user?.picture };
@@ -648,9 +661,7 @@ function clientIpOf(request: IncomingMessage): string {
 
 /** Kill every token a directory user holds (optionally sparing the current one). */
 function revokeTokensForUser(userId: string, exceptToken?: string): void {
-  for (const [token, rec] of internalTokens) {
-    if (rec.userId === userId && token !== exceptToken) internalTokens.delete(token);
-  }
+  deleteAuthTokensForUser(userId, exceptToken ? hashToken(exceptToken) : undefined);
 }
 
 /**
@@ -659,9 +670,7 @@ function revokeTokensForUser(userId: string, exceptToken?: string): void {
  * outlive the switch to personal sign-in.
  */
 function purgeAnonymousTokens(): void {
-  for (const [token, rec] of internalTokens) {
-    if (!rec.userId) internalTokens.delete(token);
-  }
+  deleteAnonymousAuthTokens();
 }
 
 setSessionRevoker((userId) => revokeTokensForUser(userId));
@@ -677,7 +686,7 @@ const authHooks: AuthHooks = {
   },
   ttlSec: Math.floor(INTERNAL_TOKEN_TTL_MS / 1000),
   revokeToken: (token) => {
-    internalTokens.delete(token);
+    deleteAuthToken(hashToken(token));
   },
   revokeUserTokens: revokeTokensForUser,
   bearerOf,

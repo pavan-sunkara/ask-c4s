@@ -521,6 +521,88 @@ export function writeSettingRow(opts: { key: string; value: string; valueType: S
   });
 }
 
+// ---------------------------------------------------------------------------
+// Session tokens (shim auth). Persisted so a restart / redeploy doesn't sign
+// everyone out. NOT tenant-scoped — a session belongs to a person, not a
+// tenant. The raw token is never stored; rows are keyed on its SHA-256, so a
+// leaked DB can't be replayed as a live session.
+// ---------------------------------------------------------------------------
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auth_tokens (
+    token_hash  TEXT PRIMARY KEY,
+    expires_at  INTEGER NOT NULL,
+    source      TEXT NOT NULL,
+    user_json   TEXT,
+    user_id     TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_auth_tokens_exp  ON auth_tokens(expires_at);
+`);
+
+export type StoredToken = {
+  expiresAt: number;
+  source: string;
+  user?: { email: string; name?: string; picture?: string };
+  userId?: string;
+};
+
+const putTokenStmt = db.prepare(
+  `INSERT OR REPLACE INTO auth_tokens (token_hash, expires_at, source, user_json, user_id)
+   VALUES (@hash, @expiresAt, @source, @userJson, @userId)`,
+);
+export function putAuthToken(hash: string, rec: StoredToken): void {
+  putTokenStmt.run({
+    hash,
+    expiresAt: rec.expiresAt,
+    source: rec.source,
+    userJson: rec.user ? JSON.stringify(rec.user) : null,
+    userId: rec.userId ?? null,
+  });
+}
+
+const getTokenStmt = db.prepare(
+  `SELECT expires_at, source, user_json, user_id FROM auth_tokens WHERE token_hash = ?`,
+);
+export function getAuthToken(hash: string): StoredToken | null {
+  const row = getTokenStmt.get(hash) as
+    | { expires_at: number; source: string; user_json: string | null; user_id: string | null }
+    | undefined;
+  if (!row) return null;
+  let user: StoredToken["user"];
+  if (row.user_json) {
+    try {
+      user = JSON.parse(row.user_json);
+    } catch {
+      user = undefined;
+    }
+  }
+  return { expiresAt: row.expires_at, source: row.source, user, userId: row.user_id ?? undefined };
+}
+
+const deleteTokenStmt = db.prepare(`DELETE FROM auth_tokens WHERE token_hash = ?`);
+export function deleteAuthToken(hash: string): void {
+  deleteTokenStmt.run(hash);
+}
+
+const deleteTokensByUserStmt = db.prepare(`DELETE FROM auth_tokens WHERE user_id = ?`);
+const deleteTokensByUserExceptStmt = db.prepare(
+  `DELETE FROM auth_tokens WHERE user_id = ? AND token_hash != ?`,
+);
+export function deleteAuthTokensForUser(userId: string, exceptHash?: string): void {
+  if (exceptHash) deleteTokensByUserExceptStmt.run(userId, exceptHash);
+  else deleteTokensByUserStmt.run(userId);
+}
+
+const deleteAnonTokensStmt = db.prepare(`DELETE FROM auth_tokens WHERE user_id IS NULL`);
+export function deleteAnonymousAuthTokens(): void {
+  deleteAnonTokensStmt.run();
+}
+
+const sweepTokensStmt = db.prepare(`DELETE FROM auth_tokens WHERE expires_at < ?`);
+export function sweepExpiredAuthTokens(now = Date.now()): void {
+  sweepTokensStmt.run(now);
+}
+
 export function deleteSettingRow(key: string) {
   deleteSettingStmt.run(getTenantId(), key);
 }
