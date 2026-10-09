@@ -432,13 +432,10 @@ async function load() {
   // show the wire-up instructions inline instead of letting the click
   // crash into Chrome's OAuth error page.
   if (!oauthConfigured()) {
-    const btn = $("sign-in");
-    if (btn) {
-      btn.disabled = true;
-      btn.title = "OAuth client_id not configured — see README §Setting up Google SSO";
-      btn.style.opacity = "0.55";
-      btn.style.cursor = "not-allowed";
-    }
+    // SSO isn't configured for this deployment — hide the SSO button and show
+    // the notice; the email + password form below is the active sign-in.
+    const ssoRow = $("sso-row");
+    if (ssoRow) ssoRow.style.display = "none";
     const banner = $("oauth-unconfigured");
     if (banner) banner.style.display = "block";
   }
