@@ -195,6 +195,7 @@
           <div><label for="nuRole">Role</label><select id="nuRole"></select></div>
           <div><label for="nuPw" id="nuPwLabel">Password</label><input id="nuPw" type="password" autocomplete="new-password" /></div>
           <div id="nuSsoWrap"><label><input id="nuSso" type="checkbox" /> Sign in with SSO only</label></div>
+          <div id="nuServiceWrap"><label><input id="nuService" type="checkbox" /> Shared/service account (keep this password — no change at first sign-in)</label></div>
           <div><button class="primary" id="nuBtn">Add user</button></div>
         </div>
         <div class="hint" id="nuHint"></div>
@@ -792,6 +793,7 @@
     $("nuBtn").textContent = legacy ? "Create owner" : "Add user";
     $("nuPwLabel").textContent = legacy ? "Password (min " + d.minPasswordLength + ")" : "Password (blank = generate one)";
     $("nuSsoWrap").style.display = legacy ? "none" : "";
+    $("nuServiceWrap").style.display = legacy ? "none" : "";
     $("addPanel").style.display = (d.assignableRoles && d.assignableRoles.length) ? "" : "none";
     $("nuHint").textContent = legacy
       ? "The owner can add everyone else. Keep this password somewhere safe."
@@ -899,12 +901,14 @@
       role: $("nuRole").value,
       password: $("nuPw").value,
       ssoOnly: !legacy && $("nuSso").checked,
+      // Shared/service account → keep the password (don't force a change at first sign-in).
+      forceChange: !(!legacy && $("nuService").checked),
     };
     if (!body.email) { setMsg($("msg"), "Enter an email address.", "err"); return; }
     $("nuBtn").disabled = true;
     api("/api/admin/users", { method: "POST", body: JSON.stringify(body) })
       .then(function (j) {
-        $("nuEmail").value = ""; $("nuName").value = ""; $("nuPw").value = ""; $("nuSso").checked = false;
+        $("nuEmail").value = ""; $("nuName").value = ""; $("nuPw").value = ""; $("nuSso").checked = false; $("nuService").checked = false;
         if (j.firstUser) {
           // The server dropped every pre-account token, this one included.
           clearToken();

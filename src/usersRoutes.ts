@@ -165,6 +165,7 @@ export async function handleAdminUsers(
           role: body.role,
           password: body.password,
           ssoOnly: body.ssoOnly,
+          forceChange: body.forceChange,
         },
         principal,
       );

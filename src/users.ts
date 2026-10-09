@@ -341,6 +341,13 @@ export type CreateUserInput = {
   password?: unknown;
   /** true → no password; the person signs in through Google/Entra only. */
   ssoOnly?: unknown;
+  /**
+   * true (default) → the person must change the supplied password at first
+   * sign-in. false → a shared / service account that keeps the given password
+   * (e.g. a single login several people share). Ignored for ssoOnly accounts
+   * and for the first owner (who always keeps their own password).
+   */
+  forceChange?: unknown;
 };
 
 export async function createUser(
@@ -380,8 +387,9 @@ export async function createUser(
       const problem = passwordProblem(supplied, email);
       if (problem) throw new UserError(problem);
       hash = await hashPassword(supplied);
-      // The first owner chose their own password; everyone else was given one.
-      mustChange = firstUser ? 0 : 1;
+      // The first owner keeps their own password; everyone else must change
+      // theirs at first sign-in — unless it's a shared/service account.
+      mustChange = firstUser || input.forceChange === false ? 0 : 1;
     } else {
       tempPassword = generateTempPassword();
       hash = await hashPassword(tempPassword);
