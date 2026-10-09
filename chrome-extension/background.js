@@ -28,8 +28,8 @@ const SLA_INTERVAL_KEY = "c4s.sla-watch.intervalMinutes";
 // Per-tab side-panel gating
 // ---------------------------------------------------------------------------
 // Ask C4S is a Service Cloud companion, so the side panel should only be
-// available on SAP C4C tabs — not on every tab in the browser. We enable the
-// panel for C4C hosts and disable it everywhere else.
+// available on SAP C4C tabs and on the Ask C4S admin page — not on every tab
+// in the browser. We enable the panel for those and disable it everywhere else.
 //
 // Note on behaviour: Chrome's `enabled` flag controls *availability*, not
 // auto-opening. Landing on a disabled tab hides an open panel, but returning
@@ -53,12 +53,58 @@ function isC4cUrl(url) {
   }
 }
 
-// Enable the panel on C4C tabs, disable it on everything else.
+// The Ask C4S admin page is served by the shim, so the panel should also be
+// available on the shim's own origin. We allow the configured endpoint origin
+// (which the admin UI is served from — see getEndpoint() in options.js) plus
+// the built-in local dev origins, so this works both locally and against the
+// deployed admin URL without code changes once the endpoint is set.
+const DEFAULT_ENDPOINT = "http://127.0.0.1:3031";
+const LOCAL_ADMIN_ORIGINS = new Set([
+  "http://127.0.0.1:3031",
+  "http://localhost:3031",
+]);
+// Updated from chrome.storage.sync "endpoint" on start and whenever it changes.
+let configuredAdminOrigin = DEFAULT_ENDPOINT;
+
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isAdminUrl(url) {
+  const o = originOf(url);
+  if (!o) return false;
+  return o === configuredAdminOrigin || LOCAL_ADMIN_ORIGINS.has(o);
+}
+
+// The panel is available on C4C Service Cloud tabs and on the Ask C4S admin page.
+function panelAllowedFor(url) {
+  return isC4cUrl(url) || isAdminUrl(url);
+}
+
+// Read the configured shim/admin origin from storage. Called on start and on
+// change so the gate follows wherever the endpoint points.
+async function refreshConfiguredAdminOrigin() {
+  try {
+    const { endpoint } = await chrome.storage.sync.get("endpoint");
+    const o = originOf(endpoint || DEFAULT_ENDPOINT);
+    if (o) configuredAdminOrigin = o;
+  } catch (e) {
+    console.warn("[c4s] could not read configured endpoint:", e);
+  }
+}
+// Populate early so tab events that fire before the first sync use a real value.
+refreshConfiguredAdminOrigin();
+
+// Enable the panel on C4C tabs and the admin page, disable it everywhere else.
 async function applyPanelForTab(tabId, url) {
   if (typeof tabId !== "number" || tabId < 0) return;
   if (!chrome.sidePanel?.setOptions) return; // Chrome < 114
   try {
-    if (isC4cUrl(url)) {
+    if (panelAllowedFor(url)) {
       await chrome.sidePanel.setOptions({
         tabId,
         path: SIDE_PANEL_PATH,
@@ -135,8 +181,8 @@ chrome.runtime.onInstalled.addListener(() => {
       .setPanelBehavior({ openPanelOnActionClick: true })
       .catch((e) => console.warn("[c4s] setPanelBehavior failed:", e));
   }
-  // Gate the panel to C4C tabs for any tabs already open at install/update.
-  syncAllTabsPanelState();
+  // Gate the panel (C4C tabs + admin page) for any tabs already open at install/update.
+  refreshConfiguredAdminOrigin().then(syncAllTabsPanelState);
 });
 
 // Re-apply on startup in case onInstalled didn't fire (browser
@@ -148,8 +194,8 @@ chrome.runtime.onStartup.addListener(() => {
       .setPanelBehavior({ openPanelOnActionClick: true })
       .catch(() => { /* ignore */ });
   }
-  // Re-gate the panel to C4C tabs for tabs restored on browser launch.
-  syncAllTabsPanelState();
+  // Re-gate the panel (C4C tabs + admin page) for tabs restored on browser launch.
+  refreshConfiguredAdminOrigin().then(syncAllTabsPanelState);
 });
 
 // Also re-init on startup — service workers are short-lived, but onStartup
@@ -163,6 +209,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync") return;
   if (SLA_ENABLED_KEY in changes || SLA_INTERVAL_KEY in changes) {
     initSlaWatcher().catch((e) => console.warn("[c4s] initSlaWatcher on storage:", e));
+  }
+  // Endpoint changed in Options → re-point the admin origin and re-gate tabs.
+  if ("endpoint" in changes) {
+    refreshConfiguredAdminOrigin().then(syncAllTabsPanelState);
   }
 });
 
