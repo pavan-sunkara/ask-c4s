@@ -246,7 +246,7 @@
   // here means one sign-in covers both the app and this page.
   var SHARED_KEY = "askc4s.field.token";
   var token = null;
-  try { token = sessionStorage.getItem(TOKEN_KEY); } catch (e) { /* private mode */ }
+  try { token = localStorage.getItem(TOKEN_KEY); } catch (e) { /* private mode */ }
   if (!token) { try { token = localStorage.getItem(SHARED_KEY); } catch (e) { /* private mode */ } }
 
   var me = null;          // { role, permissions, user, mode, mustChangePassword }
@@ -269,11 +269,11 @@
 
   function storeToken(t) {
     token = t;
-    try { sessionStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+    try { localStorage.setItem(TOKEN_KEY, t); } catch (e) {}
   }
   function clearToken() {
     token = null;
-    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
     try { localStorage.removeItem(SHARED_KEY); } catch (e) {}
   }
 
@@ -989,7 +989,7 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j || !j.role) { clearToken(); showLogin(msg); return; }
-        if (token) { try { sessionStorage.setItem(TOKEN_KEY, token); } catch (e) {} }
+        if (token) { try { localStorage.setItem(TOKEN_KEY, token); } catch (e) {} }
         me = j;
         showApp();
       })
