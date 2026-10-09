@@ -28,7 +28,7 @@ const DEFAULT_MODEL = "text-embedding-3-small";
 function resolveOpenAIKey(): string | undefined {
   try {
     return (
-      getSettingString("ai.openai_key") ||
+      getSettingString("ai.openai.api_key") ||
       process.env.OPENAI_API_KEY ||
       undefined
     );

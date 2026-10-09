@@ -101,7 +101,7 @@ function resolveProvider(): string {
 
 function resolveAnthropicKey(): string | undefined {
   try {
-    return getSettingString("ai.anthropic_key") || process.env.ANTHROPIC_API_KEY || undefined;
+    return getSettingString("ai.anthropic.api_key") || process.env.ANTHROPIC_API_KEY || undefined;
   } catch {
     return process.env.ANTHROPIC_API_KEY || undefined;
   }
@@ -111,7 +111,7 @@ function resolveAnthropicModel(override?: string): string {
   if (override) return override;
   try {
     return (
-      getSettingString("ai.anthropic_model") ||
+      getSettingString("ai.anthropic.model") ||
       process.env.ANTHROPIC_MODEL ||
       "claude-sonnet-4-5"
     );
