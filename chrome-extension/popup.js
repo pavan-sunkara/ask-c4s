@@ -783,41 +783,93 @@ function showSignInRequired() {
   authBannerShown = true;
   try {
     if (document.getElementById("c4s-auth-banner")) return;
-    const bar = document.createElement("div");
-    bar.id = "c4s-auth-banner";
-    bar.style.cssText = [
-      "position:sticky", "top:0", "z-index:9999",
-      "display:flex", "align-items:center", "gap:8px",
-      "padding:10px 12px", "margin:0 0 8px",
-      "background:#fef3c7", "border:1px solid #fcd34d", "border-radius:8px",
+    const box = document.createElement("div");
+    box.id = "c4s-auth-banner";
+    box.style.cssText = [
+      "position:sticky", "top:0", "z-index:9999", "margin:0 0 8px", "padding:12px",
+      "background:#fffbeb", "border:1px solid #fcd34d", "border-radius:8px",
       "font-size:12.5px", "color:#78350f", "line-height:1.4",
     ].join(";");
-    const msg = document.createElement("span");
-    msg.style.cssText = "flex:1";
-    msg.textContent = "Sign in to use Ask C4S — the shim rejected this request (401).";
+
+    const head = document.createElement("div");
+    head.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:6px";
+    const title = document.createElement("div");
+    title.textContent = "Sign in to Ask C4S";
+    title.style.cssText = "flex:1;font-weight:700;font-size:13px";
+    const dismiss = document.createElement("button");
+    dismiss.textContent = "✕"; dismiss.title = "Dismiss";
+    dismiss.style.cssText =
+      "flex:0 0 auto;padding:2px 7px;border:1px solid transparent;border-radius:6px;background:transparent;color:#78350f;cursor:pointer";
+    dismiss.addEventListener("click", () => { box.remove(); authBannerShown = false; });
+    head.append(title, dismiss);
+
+    const sub = document.createElement("div");
+    sub.textContent = "Enter the email and password your administrator gave you.";
+    sub.style.cssText = "margin-bottom:8px";
+
+    const email = document.createElement("input");
+    email.type = "email"; email.placeholder = "Email"; email.autocomplete = "username";
+    const password = document.createElement("input");
+    password.type = "password"; password.placeholder = "Password"; password.autocomplete = "current-password";
+    for (const el of [email, password]) {
+      el.style.cssText =
+        "display:block;width:100%;box-sizing:border-box;margin-bottom:6px;padding:7px 9px;" +
+        "border:1px solid #d6d3d1;border-radius:6px;font-size:13px";
+    }
+
+    const err = document.createElement("div");
+    err.style.cssText = "color:#b91c1c;min-height:14px;margin-bottom:6px;font-size:12px";
+
     const btn = document.createElement("button");
     btn.textContent = "Sign in";
     btn.style.cssText =
-      "flex:0 0 auto;padding:5px 10px;border:1px solid #b45309;border-radius:6px;" +
-      "background:#f59e0b;color:#1c1917;font-weight:600;cursor:pointer;font-size:12px";
-    btn.addEventListener("click", () => {
-      try { chrome.runtime.openOptionsPage(); } catch { /* ignore */ }
-    });
-    const dismiss = document.createElement("button");
-    dismiss.textContent = "✕";
-    dismiss.title = "Dismiss";
-    dismiss.style.cssText =
-      "flex:0 0 auto;padding:4px 7px;border:1px solid transparent;border-radius:6px;" +
-      "background:transparent;color:#78350f;cursor:pointer";
-    dismiss.addEventListener("click", () => {
-      bar.remove();
-      // Allow it to reappear on the next 401 — the user still isn't signed in.
-      authBannerShown = false;
-    });
-    bar.append(msg, btn, dismiss);
-    (document.body || document.documentElement).prepend(bar);
+      "padding:7px 14px;border:1px solid #b45309;border-radius:6px;background:#f59e0b;" +
+      "color:#1c1917;font-weight:600;cursor:pointer;font-size:12.5px";
+
+    async function doSignIn() {
+      err.textContent = "";
+      const e = email.value.trim(), p = password.value;
+      if (!e || !p) { err.textContent = "Enter your email and password."; return; }
+      btn.disabled = true; btn.textContent = "Signing in…";
+      try {
+        const endpoint = (await getEndpoint()).replace(/\/$/, "");
+        const r = await fetch(`${endpoint}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: e, password: p }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.ok) {
+          err.textContent = data.error || `Sign-in failed (HTTP ${r.status}).`;
+          btn.disabled = false; btn.textContent = "Sign in";
+          return;
+        }
+        if (data.mustChangePassword) {
+          err.textContent = "This account must set a new password first — open Options (⚙) to do that.";
+          btn.disabled = false; btn.textContent = "Sign in";
+          return;
+        }
+        // Store the session the same way the Options sign-in does, so the whole
+        // extension (popup, side panel, background) picks it up.
+        await chrome.storage.sync.set({
+          "sso-token": data.token,
+          "sso-user": { ...data.user, role: data.role },
+          "sso-expires-at": Date.now() + (data.ttlSec || 86400) * 1000,
+        });
+        location.reload();
+      } catch (ex) {
+        err.textContent = ex instanceof Error ? ex.message : String(ex);
+        btn.disabled = false; btn.textContent = "Sign in";
+      }
+    }
+    btn.addEventListener("click", doSignIn);
+    password.addEventListener("keydown", (ev) => { if (ev.key === "Enter") doSignIn(); });
+
+    box.append(head, sub, email, password, err, btn);
+    (document.body || document.documentElement).prepend(box);
+    try { email.focus(); } catch { /* ignore */ }
   } catch {
-    authBannerShown = false; // never let banner rendering break a request path
+    authBannerShown = false; // never let the form break a request path
   }
 }
 
