@@ -123,6 +123,14 @@ async function applyPanelForTab(tabId, url) {
 async function syncAllTabsPanelState() {
   if (!chrome.sidePanel?.setOptions) return;
   try {
+    // The manifest declares NO side_panel.default_path, so Chrome never creates
+    // a single global panel instance that rides along on every tab. Belt and
+    // braces, disable the panel globally too: any tab without an explicit
+    // per-tab override then cannot show it. We enable it only on qualifying
+    // tabs below. This is what actually keeps the panel from appearing on
+    // non-C4C tabs — a per-tab `enabled:false` alone does not tear down an
+    // already-open GLOBAL panel.
+    await chrome.sidePanel.setOptions({ enabled: false });
     const tabs = await chrome.tabs.query({});
     await Promise.all(tabs.map((t) => applyPanelForTab(t.id, t.url || "")));
   } catch (e) {
