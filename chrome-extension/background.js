@@ -399,10 +399,16 @@ async function applyAnnotationFromBackground(actionTool, actionArgs) {
 // called in response to a user gesture."
 chrome.commands.onCommand.addListener((command) => {
   if (command !== "open-side-panel") return;
-  chrome.windows.getLastFocused({ windowTypes: ["normal"] }, (win) => {
+  chrome.windows.getLastFocused({ windowTypes: ["normal"], populate: true }, (win) => {
     if (chrome.runtime.lastError || !win?.id) return;
-    chrome.sidePanel.open({ windowId: win.id }).catch(() => {
-      /* sidePanel.open requires Chrome 116+ — silently skip on older */
+    // Open BY TAB: there is no manifest default_path, so the panel's path lives
+    // per-tab (enabled on C4C/admin tabs). open({windowId}) would fail with
+    // "No active side panel for windowId". If the panel isn't available on this
+    // tab, fall back to the popup window so the shortcut still does something.
+    const activeTab = (win.tabs || []).find((t) => t.active);
+    if (activeTab?.id == null) { openPopupWindow(); return; }
+    chrome.sidePanel.open({ tabId: activeTab.id }).catch(() => {
+      openPopupWindow();
     });
   });
 });
@@ -619,14 +625,17 @@ chrome.notifications.onClicked.addListener(async (notifId) => {
         "c4s.sla-watch.clicked": { ticketId, objectId, title, at: Date.now() },
       });
     }
-    // Open the side panel. We need a windowId in scope; getLastFocused
-    // gets the most recent normal browser window (skipping our own popups).
-    chrome.windows.getLastFocused({ windowTypes: ["normal"] }, (win) => {
-      if (win?.id) {
-        chrome.sidePanel.open({ windowId: win.id }).catch((e) => {
-          // sidePanel.open() can fail if not invoked inside a gesture
-          // depending on Chrome version. Fall back to popup window so
-          // the user still lands somewhere.
+    // Open the side panel on the active tab of the most recent normal browser
+    // window (skipping our own popups). Open BY TAB — the panel's path lives
+    // per-tab (no manifest default_path), so open({windowId}) would fail with
+    // "No active side panel for windowId".
+    chrome.windows.getLastFocused({ windowTypes: ["normal"], populate: true }, (win) => {
+      const activeTab = (win?.tabs || []).find((t) => t.active);
+      if (win?.id && activeTab?.id != null) {
+        chrome.sidePanel.open({ tabId: activeTab.id }).catch((e) => {
+          // The panel may not be available on this tab (only C4C/admin), or the
+          // gesture was dropped. Fall back to the popup window so the user still
+          // lands somewhere.
           console.warn("[c4s] sidePanel.open failed, opening popup window:", e);
           openPopupWindow();
         });
