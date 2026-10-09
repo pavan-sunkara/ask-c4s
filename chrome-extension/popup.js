@@ -10808,6 +10808,10 @@ async function init() {
   // refreshContext (focus events) with a 10s throttle.
   refreshShimStatus(true).catch(() => {});
 
+  // Show the inline sign-in form right away when there's no session, so clicking
+  // the Ask C4S icon prompts sign-in immediately instead of only after a 401.
+  getBearerToken().then((t) => { if (!t) showSignInRequired(); }).catch(() => {});
+
   // Hint chips for slash commands + saved templates
   renderSlashChips();
   renderTemplateChips();
