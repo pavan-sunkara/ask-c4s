@@ -24,6 +24,84 @@ const SLA_ENABLED_KEY = "c4s.sla-watch.enabled";
 const SLA_HOURS_AHEAD_KEY = "c4s.sla-watch.hoursAhead";
 const SLA_INTERVAL_KEY = "c4s.sla-watch.intervalMinutes";
 
+// ---------------------------------------------------------------------------
+// Per-tab side-panel gating
+// ---------------------------------------------------------------------------
+// Ask C4S is a Service Cloud companion, so the side panel should only be
+// available on SAP C4C tabs — not on every tab in the browser. We enable the
+// panel for C4C hosts and disable it everywhere else.
+//
+// Note on behaviour: Chrome's `enabled` flag controls *availability*, not
+// auto-opening. Landing on a disabled tab hides an open panel, but returning
+// to a C4C tab may need a single click on the toolbar icon to reopen it —
+// Chrome requires a user gesture to open a side panel, so an extension cannot
+// auto-reopen it on a tab switch.
+const SIDE_PANEL_PATH = "popup.html?mode=sidepanel";
+
+// Matches the SAP C4C hosts declared in manifest host_permissions:
+//   *.crm.ondemand.com, *.crm.sap.com, *.c4c.sap.com
+// Anchored to the end of the hostname so only these domains (and their
+// subdomains) match — never something like "crm.sap.com.evil.example".
+const C4C_HOST_RE = /(^|\.)(crm\.ondemand\.com|crm\.sap\.com|c4c\.sap\.com)$/i;
+
+function isC4cUrl(url) {
+  if (!url) return false;
+  try {
+    return C4C_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false; // chrome://, about:blank, malformed, etc.
+  }
+}
+
+// Enable the panel on C4C tabs, disable it on everything else.
+async function applyPanelForTab(tabId, url) {
+  if (typeof tabId !== "number" || tabId < 0) return;
+  if (!chrome.sidePanel?.setOptions) return; // Chrome < 114
+  try {
+    if (isC4cUrl(url)) {
+      await chrome.sidePanel.setOptions({
+        tabId,
+        path: SIDE_PANEL_PATH,
+        enabled: true,
+      });
+    } else {
+      await chrome.sidePanel.setOptions({ tabId, enabled: false });
+    }
+  } catch (e) {
+    console.warn("[c4s] side-panel setOptions failed:", e);
+  }
+}
+
+// Re-evaluate every existing tab. Needed on install/update and browser
+// restart, where tabs already exist and no navigation event fires for them.
+async function syncAllTabsPanelState() {
+  if (!chrome.sidePanel?.setOptions) return;
+  try {
+    const tabs = await chrome.tabs.query({});
+    await Promise.all(tabs.map((t) => applyPanelForTab(t.id, t.url || "")));
+  } catch (e) {
+    console.warn("[c4s] side-panel syncAllTabs failed:", e);
+  }
+}
+
+// A tab finished loading or navigated to a new URL → re-evaluate it.
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  if (info.status === "complete" || typeof info.url === "string") {
+    applyPanelForTab(tabId, tab?.url || "");
+  }
+});
+
+// Switching tabs → make sure the newly-active tab has the correct state
+// (covers tabs that were open before the extension started).
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    applyPanelForTab(tabId, tab?.url || "");
+  } catch {
+    /* tab may have closed between activation and lookup */
+  }
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   // removeAll first: on a reload/update the items may already exist, and a bare
   // create() then logs "Cannot create item with duplicate id". Clearing first
@@ -57,6 +135,8 @@ chrome.runtime.onInstalled.addListener(() => {
       .setPanelBehavior({ openPanelOnActionClick: true })
       .catch((e) => console.warn("[c4s] setPanelBehavior failed:", e));
   }
+  // Gate the panel to C4C tabs for any tabs already open at install/update.
+  syncAllTabsPanelState();
 });
 
 // Re-apply on startup in case onInstalled didn't fire (browser
@@ -68,6 +148,8 @@ chrome.runtime.onStartup.addListener(() => {
       .setPanelBehavior({ openPanelOnActionClick: true })
       .catch(() => { /* ignore */ });
   }
+  // Re-gate the panel to C4C tabs for tabs restored on browser launch.
+  syncAllTabsPanelState();
 });
 
 // Also re-init on startup — service workers are short-lived, but onStartup
