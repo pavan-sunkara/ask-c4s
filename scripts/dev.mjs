@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * scripts/dev.mjs — start Ask C4S on this machine for development.
  *
  *   npm start                  compile the shim, run it on 127.0.0.1:3031 with the

@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * SAP C4C — "Draft with Ask C4S" integration.
  *
  * Called from a Custom Action in Cloud Applications Studio. The action

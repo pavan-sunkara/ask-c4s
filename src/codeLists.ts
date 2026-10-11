@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Back-compat re-export shim.
  *
  * The real implementation moved to `src/connectors/c4c/codeLists.ts` as part

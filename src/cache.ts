@@ -1,3 +1,9 @@
+/**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
 import Database from "better-sqlite3";
 import { resolve, dirname, isAbsolute } from "node:path";
 import { mkdirSync } from "node:fs";

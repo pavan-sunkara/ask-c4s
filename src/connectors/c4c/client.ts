@@ -1,3 +1,9 @@
+/**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
 import { config as loadEnv } from "dotenv";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

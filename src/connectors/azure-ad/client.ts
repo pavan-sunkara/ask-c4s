@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Azure AD / Entra ID authentication helper.
  *
  * Uses the OAuth 2.0 client-credentials flow ("service principal" / "app

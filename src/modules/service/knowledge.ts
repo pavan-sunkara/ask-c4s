@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Knowledge-base tools — search, fetch attached articles, attach.
  *
  * Re-export shims from `serviceOps.ts`. The KB transport itself lives at

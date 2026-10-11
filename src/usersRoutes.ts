@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * HTTP handlers for personal accounts: sign-in, sign-out, change password, and
  * the admin "Users" API.
  *

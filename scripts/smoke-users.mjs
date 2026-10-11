@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * smoke-users.mjs — end-to-end check of personal accounts + roles.
  *
  *   npm run build

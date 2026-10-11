@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Break-glass user administration from the HOST — no HTTP, no token. Whoever can
  * run this already controls the server (and its .env), so it is the way back in
  * when the last owner has forgotten their password.

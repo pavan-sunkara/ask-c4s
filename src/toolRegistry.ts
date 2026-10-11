@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Catalog of every MCP tool the Companion knows about for SAP C4C — both
  * those currently wired (status='implemented') and those we could build
  * (status='planned'). Surfaces on /admin/tools so the demo audience can see

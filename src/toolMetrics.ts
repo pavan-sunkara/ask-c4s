@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * In-process call counters for MCP tools — drives the /admin Tools tab.
  * Resets on server restart by design (point-in-time visibility, not history).
  */

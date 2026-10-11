@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * User directory — personal accounts, passwords, sign-in and lockout.
  *
  * TWO MODES, and the switch is simply "does the users table have a row?":

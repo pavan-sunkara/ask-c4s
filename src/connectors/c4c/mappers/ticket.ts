@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * SAP C4C `ServiceRequest` → canonical `Ticket`.
  *
  * Pure function. No I/O. Tested against the C4C OData v2 row shape we get

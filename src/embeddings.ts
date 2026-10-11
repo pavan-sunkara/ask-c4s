@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Embeddings + RAG helpers for ticket history search.
  *
  * Uses OpenAI's `text-embedding-3-small` (1536-d, $0.00002 / 1K tokens) by

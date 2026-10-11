@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Tenant-override store — JSON file on disk holding an alternate
  * C4C_BASE_URL / C4C_USER / C4C_PASSWORD set from the admin UI.
  *

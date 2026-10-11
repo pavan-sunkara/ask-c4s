@@ -1,3 +1,9 @@
+/**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
 import type { CodedValue, Timestamp, RawRecord } from "./common.js";
 import type { Asset } from "./asset.js";
 

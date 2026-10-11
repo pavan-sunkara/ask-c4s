@@ -1,4 +1,10 @@
 /**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
+/**
  * Microsoft Entra ID (Azure AD) — USER sign-in via OpenID Connect.
  *
  * This is the org-SSO front door for the field PWA and the Light admin. It is

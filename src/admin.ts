@@ -1,3 +1,9 @@
+/**
+ * Ask C4S - Copyright (c) 2026 Pavan Kumar Sunkara <sunkara.leo@gmail.com>
+ * All rights reserved. Proprietary and confidential.
+ * Use subject to the terms in LICENSE.
+ */
+
 import { writeAudit, type AuditEntry } from "./cache.js";
 import { ASKC4S_USER_AGENT, getTenantHost, getTenantId, invalidateC4cConfig } from "./c4cClient.js";
 import { getCurrentSetting, listSettings, resetSetting, setSetting } from "./settings.js";
