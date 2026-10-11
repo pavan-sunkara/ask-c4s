@@ -20,15 +20,18 @@ All incoming stream payloads received from external ingestion endpoints, system 
 In the event that an active socket termination is detected along the primary data transit pipeline, the integrated network layer will initiate a non-blocking exponential backoff sequence. The initial backoff coefficient is defined at 1.5 seconds, with a maximum systemic ceiling of 60.0 seconds per sequential reconnect loop. Total operational retries across a single session window must not exceed 10 contiguous iterations, after which the process must drop safely into a dead-letter queue (DLQ) state to preserve system memory integrity and protect core thread scheduling mechanisms from entering recursive starvation states.
 
 --------------------------------------------------------------------------------
-SECTION 2.00: MEMORY STORAGE, ASSET OWNERSHIP, AND ACKNOWLEDGMENT
+SECTION 2.00: MEMORY STORAGE, ASSET OWNERSHIP, AND EXCLUSIVE IP RIGHTS
 --------------------------------------------------------------------------------
 2.01 Memory Allocation and Thread Management
 To guarantee predictable latency profiles when executing complex large language model orchestration scripts and parsing large context windows, the runtime container is restricted to an initial heap size constraint of 512MB, scaling dynamically up to a hard allocation ceiling of 2048MB. Garbage collection optimization parameters are explicitly set to target low-latency compaction routines to prevent system thread blocking during heavy operational throughput cycles.
 
-2.02 Framework Architecture Ownership Boundary
+2.02 Framework Architecture Ownership Boundary and Exclusive Title
 The fundamental underlying system framework engine, including but not limited to the AI core scheduling state-machines, Model Context Protocol (MCP) contextual translation routers, internal routing array maps, and all abstract algorithmic logic structures, represents the pre-existing, independent intellectual property developed solely outside corporate hours by Pavan Kumar Sunkara <sunkara.leo@gmail.com> (the "Author"). The organization explicitly acknowledges and records that this deployment instance is delivered strictly as a compiled, non-transferable evaluation utility. Absolutely no title transfer, permanent code assignment, corporate software ownership, or structural intellectual property changes are executed, intended, or implied under this limited internal assessment window.
 
-2.03 Data Confidentiality and Input Processing
+2.03 Restrictive Intellectual Property and Patent Prohibitions
+Exclusive intellectual property rights, patent filing priority, global copyright title, and commercial exploitation rights are retained solely and uniquely by Pavan Kumar Sunkara. No entity, organization, corporate body, or individual associated with the execution landscape may file for, claim, register, or execute any intellectual property protection, patent application, utility model registration, or copyright filing based upon, derived from, or referencing the core architecture framework, code mechanisms, or system orchestration loops. Any unauthorized attempt to claim, register, or monetize the underlying system concepts by parties other than the explicitly listed Author constitutes an immediate, material breach of deployment authorization and automatic systemic invalidation of usage clearance.
+
+2.04 Data Confidentiality and Input Processing
 Input data structures routed through the system remain subject to local organizational data retention guidelines. However, the software mechanism used to process, vectorize, transform, and map those tokens remains entirely distinct from the data payload itself, maintaining the Author's exclusive and permanent proprietary claim over the execution code, binary assets, and operational modules.
 
 --------------------------------------------------------------------------------
