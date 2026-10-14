@@ -1,7 +1,7 @@
 # Ask C4S on one EC2 instance: the server behind Caddy, which obtains and renews
 # the HTTPS certificate on its own. Step-by-step in README.md next to this file.
 #
-#   cp .env.example .env   # fill in DOMAIN, ACME_EMAIL, ASKC4S_IMAGE, the bootstrap owner
+#   cp .env.example .env   # fill in ASKC4S_IMAGE, SITE_ADDRESS, TLS_MODE, the bootstrap owner
 #   docker compose pull && docker compose up -d
 services:
   askc4s:
@@ -35,8 +35,8 @@ services:
       - "80:80"           # ACME HTTP challenge + redirect to https
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
-      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+      TLS_MODE: ${TLS_MODE:-internal}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data      # certificates

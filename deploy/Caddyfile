@@ -1,13 +1,16 @@
-# Automatic HTTPS for Ask C4S. DOMAIN and ACME_EMAIL come from .env via
-# docker-compose.yml. Caddy answers the ACME challenge on port 80, redirects
-# http -> https, and proxies everything to the server container.
-{
-	email {$ACME_EMAIL}
-}
-
-{$DOMAIN} {
+# HTTPS for Ask C4S. SITE_ADDRESS and TLS_MODE come from .env via
+# docker-compose.yml. Caddy proxies everything to the server container,
+# streaming /api/* (including the chat endpoint) unbuffered.
+#
+#   TLS_MODE=internal         Caddy's own CA (self-signed). Each client imports the
+#                             root CA from /data/caddy/pki/authorities/local/root.crt.
+#                             No public domain needed.
+#   TLS_MODE=you@example.com  Let's Encrypt for SITE_ADDRESS. Needs a real domain
+#                             resolving to this host and ports 80/443 reachable.
+#
+# Switching self-signed -> domain is an .env change only (SITE_ADDRESS + TLS_MODE).
+{$SITE_ADDRESS:ec2-54-83-232-127.compute-1.amazonaws.com} {
 	encode gzip
-	# The field app, the admin page and every /api/* route — including the
-	# streaming chat endpoint, which Caddy passes through unbuffered.
+	tls {$TLS_MODE:internal}
 	reverse_proxy askc4s:3030
 }
