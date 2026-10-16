@@ -13,7 +13,7 @@ This repository is the complete product: everything needed to build, deploy and 
 | **Field PWA** | [`apps/mobile-pwa`](apps/mobile-pwa) | Served at `/`. Installable, offline-capable. |
 | **Admin page** — settings, SAP tenants and users | [`apps/light-admin`](apps/light-admin) | Served at `/settings`. |
 | **Shared design system** | [`apps/shared-ui`](apps/shared-ui) | One stylesheet for every surface (`/shared/askc4s.css`). |
-| **Image** | [`Dockerfile`](Dockerfile) | Publishes `ghcr.io/<owner>/ask-c4s-server`. |
+| **Image** | [`Dockerfile`](Dockerfile) | Publishes `ghcr.io/<owner>/ask-c4s`. |
 | Architecture decks and diagrams | [`docs/architecture`](docs/architecture), [`docs/collateral`](docs/collateral) | Kept out of the extension package on purpose. |
 
 ## Run it locally
@@ -64,12 +64,12 @@ Builds (which type-checks), then starts its own throwaway server — random port
 **On AWS EC2:** [`deploy/README.md`](deploy/README.md) is the step-by-step — one instance, Docker Compose, Caddy for automatic HTTPS, the image CI publishes. By hand:
 
 ```bash
-docker build -t ask-c4s-server .
+docker build -t ask-c4s .
 docker run -p 3030:3030 \
   -e ASKC4S_BOOTSTRAP_OWNER_EMAIL=you@company.com \
   -e ASKC4S_BOOTSTRAP_OWNER_PASSWORD=<temporary, 12+ characters> \
   -v askc4s-data:/app/data \
-  ask-c4s-server
+  ask-c4s
 ```
 
 Mount `/app/data` (SQLite and the encrypted tenant catalog live there). Put TLS in front of it. The image contains compiled JavaScript and static files only — no TypeScript source — and CI refuses to publish one that doesn't pass `scripts/verify-image-containment.sh`.

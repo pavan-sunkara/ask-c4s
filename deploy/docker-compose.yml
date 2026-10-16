@@ -5,7 +5,7 @@
 #   docker compose pull && docker compose up -d
 services:
   askc4s:
-    image: ${ASKC4S_IMAGE:?set ASKC4S_IMAGE in .env, e.g. ghcr.io/<owner>/ask-c4s-server:main}
+    image: ${ASKC4S_IMAGE:?set ASKC4S_IMAGE in .env, e.g. ghcr.io/<owner>/ask-c4s:main}
     restart: unless-stopped
     env_file: .env
     environment:

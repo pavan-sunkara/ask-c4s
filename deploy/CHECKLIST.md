@@ -6,7 +6,7 @@ Path: image published to GHCR by CI, pulled onto the box; HTTPS via Caddy **self
 ## 0. Publish the image (GitHub)
 - [ ] Push this repo to a **private** GitHub repo
 - [ ] Confirm the **GHCR package is private** (Packages → the package → Package settings)
-- [ ] CI (`.github/workflows/ci.yml`) builds + publishes `ghcr.io/<owner>/ask-c4s-server:main` on push to `main`
+- [ ] CI (`.github/workflows/ci.yml`) builds + publishes `ghcr.io/<owner>/ask-c4s:main` on push to `main`
 - [ ] Create a **fine-grained PAT**: that one repo only, **read-only** (Contents: Read, Packages: Read), short expiry
 
 ## 1. Get the image on the box (EC2 Instance Connect terminal)
@@ -15,7 +15,7 @@ Path: image published to GHCR by CI, pulled onto the box; HTTPS via Caddy **self
 
 ## 2. Configure
 - [ ] `cp deploy/.env.example deploy/.env`
-- [ ] Set in `.env`: `ASKC4S_IMAGE=ghcr.io/<owner>/ask-c4s-server:main`, `SITE_ADDRESS=ec2-54-83-232-127.compute-1.amazonaws.com`, `TLS_MODE=internal`, bootstrap owner email + a strong temp password
+- [ ] Set in `.env`: `ASKC4S_IMAGE=ghcr.io/<owner>/ask-c4s:main`, `SITE_ADDRESS=ec2-54-83-232-127.compute-1.amazonaws.com`, `TLS_MODE=internal`, bootstrap owner email + a strong temp password
 
 ## 3. Start
 - [ ] `cd deploy && docker compose pull && docker compose up -d`

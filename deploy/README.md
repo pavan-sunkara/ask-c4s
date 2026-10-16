@@ -4,7 +4,7 @@ One instance, Docker Compose, the published image, Caddy for HTTPS. About 30 min
 
 ```
 Chrome/Edge extension ─┐
-Field app (phone)      ├── https://askc4s.example.com ── Caddy (443) ── ask-c4s-server (3030) ── SAP C4C (OData, 443 out)
+Field app (phone)      ├── https://askc4s.example.com ── Caddy (443) ── ask-c4s (3030) ── SAP C4C (OData, 443 out)
 Admin page             ┘                                   EC2 instance, one Docker volume
 ```
 

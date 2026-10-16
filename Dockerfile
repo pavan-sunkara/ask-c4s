@@ -1,5 +1,5 @@
 # =============================================================================
-# Ask C4S — ask-c4s-server
+# Ask C4S — ask-c4s
 #
 # The SAP C4S companion. Ships:
 #   • the shim: 60 MCP tools, SAP C4C connector, gated writes, RAG
@@ -10,11 +10,11 @@
 # Compiled JavaScript, production dependencies and the three static apps —
 # nothing else. Verified by: scripts/verify-image-containment.sh (run in CI).
 #
-# Build:  docker build -t ask-c4s-server:dev .
+# Build:  docker build -t ask-c4s:dev .
 # Run:    docker run --rm -p 3030:3030 -e HOST=0.0.0.0 \
 #                    -e ASKC4S_BOOTSTRAP_OWNER_EMAIL=<you@company.com> \
 #                    -e ASKC4S_BOOTSTRAP_OWNER_PASSWORD=<temporary-12+ chars> \
-#                    -v askc4s-data:/app/data ask-c4s-server:dev
+#                    -v askc4s-data:/app/data ask-c4s:dev
 #         (the owner signs in at /settings and must change the password)
 # =============================================================================
 

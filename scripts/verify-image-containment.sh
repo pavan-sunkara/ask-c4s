@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # =============================================================================
-# verify-image-containment.sh — prove the ask-c4s-server image contains only
+# verify-image-containment.sh — prove the ask-c4s image contains only
 # what it should: the compiled server, its production dependencies and the
 # three static apps. No source, no other web bundle, no baked-in escape hatch.
 #
@@ -8,8 +8,8 @@
 # guarantee, and this script turns "we remembered" into "CI fails if we didn't".
 #
 # Run it on every build:
-#   docker build -t ask-c4s-server:ci .
-#   ./scripts/verify-image-containment.sh ask-c4s-server:ci
+#   docker build -t ask-c4s:ci .
+#   ./scripts/verify-image-containment.sh ask-c4s:ci
 #
 # NOTE: we deliberately do NOT grep for the string "admin". The server
 # legitimately serves /api/admin/settings, so its compiled code contains admin

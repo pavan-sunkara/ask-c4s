@@ -5,7 +5,7 @@
 #                     that the extension's copy of the shared stylesheet is current
 #   push to main/dev/qa, or a v* tag
 #                     build the image, run the containment check BEFORE pushing,
-#                     then publish ghcr.io/<owner>/ask-c4s-server:<ref> and
+#                     then publish ghcr.io/<owner>/ask-c4s:<ref> and
 #                     :<ref>-<sha7>
 #
 # Nothing here deploys anywhere. Clients are given a published image (or pull it
@@ -75,8 +75,8 @@ jobs:
           SHA7="${GITHUB_SHA:0:7}"
           # GHCR requires a lower-cased owner.
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_ref=${OWNER_LC}/ask-c4s-server:${REF}" >> "$GITHUB_OUTPUT"
-          echo "image_sha=${OWNER_LC}/ask-c4s-server:${REF}-${SHA7}" >> "$GITHUB_OUTPUT"
+          echo "image_ref=${OWNER_LC}/ask-c4s:${REF}" >> "$GITHUB_OUTPUT"
+          echo "image_sha=${OWNER_LC}/ask-c4s:${REF}-${SHA7}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -96,7 +96,7 @@ jobs:
           file: ./Dockerfile
           push: false
           load: true
-          tags: ask-c4s-server:ci
+          tags: ask-c4s:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -104,7 +104,7 @@ jobs:
       # core.fileMode=false, so a .sh committed from there can land without its
       # exec bit and the runner fails with "Permission denied" (exit 126).
       - name: Verify containment (only the three static apps, no insecure defaults, no source)
-        run: sh ./scripts/verify-image-containment.sh ask-c4s-server:ci
+        run: sh ./scripts/verify-image-containment.sh ask-c4s:ci
 
       - name: Push image
         uses: docker/build-push-action@v6
