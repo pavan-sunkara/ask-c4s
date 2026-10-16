@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask C4S — Privacy Policy</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1f2937; --muted:#6b7280; --bg:#ffffff; --card:#f9fafb; --border:#e5e7eb; --accent:#7c3aed; }
+  @media (prefers-color-scheme: dark){ :root{ --fg:#e5e7eb; --muted:#9ca3af; --bg:#0b0f17; --card:#111827; --border:#1f2937; --accent:#a78bfa; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:48px 20px 80px; }
+  h1 { font-size:1.9rem; margin:0 0 4px; }
+  .updated { color:var(--muted); font-size:.9rem; margin:0 0 28px; }
+  h2 { font-size:1.2rem; margin:32px 0 8px; }
+  p, li { color:var(--fg); }
+  ul { padding-left:1.2em; }
+  code { background:var(--card); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:.88em; }
+  .note { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:12px 14px; margin:20px 0; color:var(--muted); font-size:.92rem; }
+  a { color:var(--accent); }
+  footer { margin-top:40px; color:var(--muted); font-size:.85rem; border-top:1px solid var(--border); padding-top:16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask C4S — Privacy Policy</h1>
+  <p class="updated">Last updated: 16 October 2026</p>
+
+
+
+  <h2>Overview</h2>
+  <p>Ask C4S is a browser extension that assists users of SAP Service Cloud (C4S / C4C).
+  It connects to a backend service configured by your organization’s administrator
+  (the “Service”) to help triage tickets, search the knowledge base, check parts, and
+  draft replies.</p>
+
+  <h2>What the extension accesses</h2>
+  <ul>
+    <li><strong>Page content on supported SAP Service Cloud pages</strong>
+      (<code>*.crm.ondemand.com</code>, <code>*.crm.sap.com</code>,
+      <code>*.c4c.sap.com</code>, and <code>*.cloudfoundry.io</code>): Ask C4S loads a
+      content script on these pages. When you invoke a feature (for example, a
+      right-click command, slash command, or on-page button), it may read the current
+      page to identify the ticket and provide relevant context.</li>
+    <li><strong>Text you select or type</strong>: selections you act on and prompts you enter.</li>
+    <li><strong>Your sign-in session</strong>: an authentication token and account
+      details, stored in Chrome local storage. The token is sent to the configured
+      Service when needed to authenticate a request.</li>
+  </ul>
+
+  <h2>What is sent, and where</h2>
+  <p>When you submit a request, Ask C4S sends your query, any text you selected or
+  entered, and the relevant page or ticket context to the backend Service configured
+  by your administrator (the “Server URL” in settings). It may also send the
+  authentication token when needed to authenticate the request. The Service:</p>
+  <ul>
+    <li>retrieves data from your organization’s SAP Service Cloud tenant to answer your
+      request, and</li>
+    <li>may send the request and relevant context to an AI provider selected by your
+      organization’s administrator to generate a response. The provider used depends
+      on your organization’s configuration; ask your administrator which provider is
+      enabled and what provider terms apply.</li>
+  </ul>
+  <p>The extension sends requests to the configured backend Service. If an AI
+  provider is enabled, the Service may transmit the request and relevant context to
+  that provider as described above.</p>
+
+  <h2>What is stored locally</h2>
+  <p>Ask C4S stores your authentication token, account information, and settings
+  (such as the Server URL, display preferences, and SLA-watcher settings) in Chrome
+  local storage on your device. The token is sent to the configured Service when
+  needed for authentication; settings are sent only when needed to provide a feature.
+  You can clear this local information by signing out or removing the extension.</p>
+
+  <h2>Data sharing and sale</h2>
+  <p>Ask C4S does <strong>not</strong> sell your data and does <strong>not</strong>
+  share it with third parties other than the backend Service you connect to (and, via
+  that Service, the AI provider your administrator configures).</p>
+
+  <h2>Data retention</h2>
+  <p>The extension stores the local items listed above. Retention of information
+  processed by the backend Service, your organization’s SAP environment, and any
+  enabled AI provider is governed by your organization’s policies and the applicable
+  provider terms. Contact your administrator for details about those systems’ retention
+  settings.</p>
+
+  <h2>Permissions</h2>
+  <p>Ask C4S uses browser permissions to provide its page-context, ticket, knowledge,
+  parts, reply-drafting, and SLA-watcher features. Page access is limited to the
+  supported SAP Service Cloud domains listed above. Network access is used for the
+  configured Service and any endpoints required by enabled features.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <strong>pavan.sunkara@thermofisher.com</strong>.</p>
+
+  <footer>Ask C4S — service companion for SAP Service Cloud.</footer>
+</main>
+</body>
+</html>
